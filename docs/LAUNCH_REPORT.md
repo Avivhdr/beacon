@@ -171,7 +171,7 @@ The page follows `DESIGN.md`. There is no `PRODUCT.md`. The launch plan says not
 - `curl -sI https://beacon-for-github.vercel.app/appcast.xml` returns 200 and `content-type: application/xml`. The body is an empty Sparkle channel titled Beacon.
 - `curl` of `/project.yml`, `/.env.local`, and `/README.md` returns 404.
 
-The first CLI deploy uploaded this Mac's build folders (about 7661 files). `vercel` did not apply `.gitignore` from this worktree. That deployment was removed. `.vercelignore` is in place, and the production alias is the later deploy.
+The first CLI deploy uploaded this Mac's build folders (about 7661 files). `vercel` did not apply `.gitignore` from this worktree. That deployment was removed. `.vercelignore` is in place. The push of this phase to `main` deployed from GitHub. `https://beacon-for-github-git-main-aviv-hadars-projects.vercel.app` is Ready and owns the production alias. The feed check above still passes.
 
 ### Decision
 
