@@ -1,0 +1,76 @@
+name: Beacon
+options:
+  bundleIdPrefix: com.avivhadar
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  BeaconCore:
+    path: .
+targets:
+  Beacon:
+    type: application
+    platform: macOS
+    sources:
+      # Info.plist is merged in via INFOPLIST_FILE. Exclude it so it is not also a resource.
+      - path: Sources/Beacon
+        excludes:
+          - Info.plist
+    dependencies:
+      - package: BeaconCore
+        product: Core
+    settings:
+      base:
+        PRODUCT_NAME: Beacon
+        PRODUCT_BUNDLE_IDENTIFIER: com.avivhadar.Beacon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Sources/Beacon/Info.plist
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        INFOPLIST_KEY_CFBundleDisplayName: Beacon
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
+        # Outgoing HTTPS and `gh` need no entitlements. The app is not sandboxed.
+      configs:
+        # Debug stays ad-hoc so everyday builds need no Developer ID prompt.
+        Debug:
+          CODE_SIGN_IDENTITY: "-"
+        # Release is what ships: Developer ID, Hardened Runtime, team 8PYS6TK87H.
+        Release:
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          DEVELOPMENT_TEAM: "8PYS6TK87H"
+          ENABLE_HARDENED_RUNTIME: YES
+  BeaconCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/CoreTests
+    dependencies:
+      - package: BeaconCore
+        product: Core
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.avivhadar.BeaconCoreTests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+schemes:
+  Beacon:
+    build:
+      targets:
+        Beacon: all
+        BeaconCoreTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - BeaconCoreTests
+    archive:
+      config: Release

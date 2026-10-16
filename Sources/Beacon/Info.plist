@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Partial Info.plist.
+
+  Xcode generates the rest (bundle id, versions, LSUIElement, display name) from
+  project.yml and merges this file on top. Sparkle's feed URL and public key
+  land here in a later phase, because those keys are not build settings.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+</dict>
+</plist>

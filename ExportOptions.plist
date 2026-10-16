@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- "developer-id" is the export method for outside-the-App-Store distribution. Unlike
+	     a plain `xcodebuild build`, exporting an archive this way strips the get-task-allow
+	     debug entitlement, adds a secure timestamp, and re-signs nested vendored binaries
+	     (Sparkle's Autoupdate/Updater.app/XPC services) with our own identity — all things
+	     notarization requires and a plain build doesn't do. See package.sh. -->
+	<key>method</key>
+	<string>developer-id</string>
+	<key>teamID</key>
+	<string>8PYS6TK87H</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>signingCertificate</key>
+	<string>Developer ID Application</string>
+</dict>
+</plist>

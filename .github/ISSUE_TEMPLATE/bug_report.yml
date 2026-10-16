@@ -1,0 +1,40 @@
+name: Bug report
+description: Beacon did something wrong.
+title: "Bug: "
+body:
+  - type: input
+    id: beacon-version
+    attributes:
+      label: Beacon version
+      description: The version you installed. In Terminal, `defaults read /Applications/Beacon.app/Contents/Info.plist CFBundleShortVersionString`.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      description: Apple menu, About This Mac.
+      placeholder: "15.6"
+    validations:
+      required: true
+  - type: textarea
+    id: dump
+    attributes:
+      label: Output of Beacon --dump
+      description: |
+        In Terminal:
+
+        /Applications/Beacon.app/Contents/MacOS/Beacon --dump
+
+        Paste the output. It can include repository names. Remove anything you do not want to share. If the app did not launch, say that here.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what Beacon did.
+    validations:
+      required: true
