@@ -1,5 +1,7 @@
 # Beacon
 
+[![CI](https://github.com/Avivhdr/beacon/actions/workflows/ci.yml/badge.svg)](https://github.com/Avivhdr/beacon/actions/workflows/ci.yml)
+
 Beacon is a macOS menu bar app for GitHub. It shows three things:
 
 - Unread activity that needs you.

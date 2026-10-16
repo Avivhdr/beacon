@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test
+        run: swift test
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        run: xcodegen generate
+
+      - name: Unsigned build
+        run: xcodebuild -project Beacon.xcodeproj -scheme Beacon -configuration Debug -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
