@@ -200,3 +200,19 @@ Checked on 2026-10-16.
 ### Decision
 
 Binaries go to GitHub Releases. The feed stays on `https://beacon-for-github.vercel.app/appcast.xml`.
+
+## Phase 7: Homebrew tap
+
+Checked on 2026-10-16.
+
+### What changed
+
+`dist/homebrew-tap/Casks/beacon.rb` is ready. It is not in git, and the public tap does not exist yet. Ask D creates `Avivhdr/homebrew-tap`.
+
+The cask installs `Beacon.app` from `Beacon-<version>.dmg`, depends on macOS Sonoma or later, sets `auto_updates true`, and removes `~/.config/beacon`, `~/Library/Application Support/Beacon`, and `~/Library/Preferences/com.avivhadar.Beacon.plist`.
+
+The sha256 is the dry-run disk image `e405aa3320b4ba00b6a431179a180aa0869f6a05933c1f96fca259544514a650`. A real `./release.sh` replaces the version and the sha256, then pushes the tap when that directory is a git checkout.
+
+### Decision
+
+The tap stays local until Ask D.
