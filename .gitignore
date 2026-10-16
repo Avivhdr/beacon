@@ -13,8 +13,9 @@
 # Sparkle release tools, downloaded by release.sh
 /.sparkle-tools/
 
-# Vercel link metadata
+# Vercel link metadata and local tokens
 /.vercel/
+.env*
 
 # Panel PNGs from `make snapshots`
 /snapshots/

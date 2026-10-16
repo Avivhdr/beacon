@@ -138,3 +138,41 @@ The project had Vercel Authentication on. That would hide the feed from Sparkle,
 - Debug offer test. `defaults write com.avivhadar.Beacon SUFeedURL http://127.0.0.1:8765/appcast.xml`. The feed item was build 2, short version 1.0.1, signed with the beacon key. A scheduled check reported `offer 1.0.1 handle=false` (the strip path). A user check, Debug launch argument `--check-updates`, reported `offer 1.0.1 handle=true` (Sparkle's window). The override was deleted. `defaults read SUFeedURL` finds no key.
 - The localhost test build allowed local networking so `http://127.0.0.1` could load. That key is not in the committed Info.plist, and it is not in the Release plist built from this tree.
 - `swift test`: 20 passed.
+
+## Phase 5: the website
+
+Checked on 2026-10-16.
+
+### Host
+
+The Vercel project is `beacon-for-github` (`prj_y33QpldMZnPL8qerFUoKyLTBvNXF`) on team `aviv-hadars-projects`. Root directory is `web`. Framework preset is Other. Git is connected to `Avivhdr/beacon`, production branch `main`. Deployment protection stays off, so Sparkle can read the feed.
+
+Production URL: https://beacon-for-github.vercel.app
+
+The GitHub homepage is that URL. The repository is still private.
+
+### What changed
+
+`web/` is a static site: `index.html`, `styles.css`, `main.js`, an empty `appcast.xml`, a favicon, an apple touch icon, `og.png` at 1200×630, and the three panel screenshots.
+
+The page follows `DESIGN.md`. There is no `PRODUCT.md`. The launch plan says not to stop for extra questions, so the page direction comes from `LAUNCH_PLAN.md` and `DESIGN.md`.
+
+`.vercelignore` keeps local build folders out of a CLI deploy. `.gitignore` ignores `.env*` because `vercel link` wrote a local token file. That file is not committed.
+
+### Checks
+
+- Desktop (1280) and mobile (390) screenshots. The page matches the app: ink background, amber radar, uppercase readouts, hairline panel. At 390px the panel sits above the title, and the page does not scroll sideways.
+- The copy button changes to "Copied".
+- A Linux, iPhone, and iPad user agent hides the download and shows "Beacon is for macOS 14+." A Mac user agent shows the download.
+- The skip link was one pixel into the viewport. It now sits fully above the page until it is focused.
+- `.pill` sets `display`, which overrides the `hidden` attribute. `[hidden] { display: none !important; }` makes the Mac-only rule work.
+- Lighthouse accessibility: 100 on `http://127.0.0.1:8766/` and 100 on the production URL.
+- The design detector reported hover text `#f4a93b` on `#f4a93b`. The hover fill is an 8% amber wash on `#0c0f14`, not solid amber. Amber on ink is about 9.7:1. Lighthouse contrast checks passed, so this report leaves the color as it is.
+- `curl -sI https://beacon-for-github.vercel.app/appcast.xml` returns 200 and `content-type: application/xml`. The body is an empty Sparkle channel titled Beacon.
+- `curl` of `/project.yml`, `/.env.local`, and `/README.md` returns 404.
+
+The first CLI deploy uploaded this Mac's build folders (about 7661 files). `vercel` did not apply `.gitignore` from this worktree. That deployment was removed. `.vercelignore` is in place, and the production alias is the later deploy.
+
+### Decision
+
+Ask B was already answered. The host is the address Phase 4 compiled into the app. No new question.

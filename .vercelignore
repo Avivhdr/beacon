@@ -1,0 +1,13 @@
+# The site root is web/. Keep local build output out of CLI deploys.
+.git
+.build
+build
+DerivedData
+dist
+.sparkle-tools
+.playwright-cli
+snapshots
+Beacon.xcodeproj
+.env*
+*.dmg
+*.zip

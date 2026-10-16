@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beacon for GitHub</title>
+  <meta name="description" content="Beacon is a macOS menu bar app. It shows unread GitHub activity, pull requests waiting for your review, and your own open pull requests.">
+  <meta property="og:title" content="Beacon for GitHub">
+  <meta property="og:description" content="Know what on GitHub needs you.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://beacon-for-github.vercel.app/">
+  <meta property="og:image" content="https://beacon-for-github.vercel.app/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="bar">
+    <p class="readout">Beacon</p>
+    <a class="readout link" href="https://github.com/Avivhdr/beacon">GitHub</a>
+  </header>
+
+  <main id="content">
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>Beacon</h1>
+        <p class="lede">Know what on GitHub needs you.</p>
+        <canvas id="radar" width="168" height="168" aria-hidden="true"></canvas>
+        <div class="counts" aria-label="Sample counts from the menu bar">
+          <p><span class="num" data-count="3">0</span><span class="readout">Unread</span></p>
+          <p><span class="num" data-count="2">0</span><span class="readout">To review</span></p>
+          <p><span class="num dim-num" data-count="4">0</span><span class="readout">Mine</span></p>
+        </div>
+        <div class="actions">
+          <a class="pill mac-only" id="download" href="https://github.com/Avivhdr/beacon/releases/latest/download/Beacon.dmg">Download for macOS</a>
+          <p class="other-os" id="other-os" hidden>Beacon is for macOS 14+.</p>
+          <div class="brew">
+            <code id="brew-command">brew install --cask avivhdr/tap/beacon</code>
+            <button type="button" id="copy" aria-describedby="brew-command">Copy</button>
+          </div>
+        </div>
+      </div>
+      <figure class="panel-shot">
+        <img src="/screenshots/unread.png" width="920" height="1200" alt="The Beacon panel on the Unread tab. Three items need attention: a mention from mona, a reply from hubot, and changes requested by octocat.">
+      </figure>
+    </section>
+
+    <section class="tabs" aria-labelledby="tabs-heading">
+      <h2 id="tabs-heading" class="readout section-label">The three tabs</h2>
+      <article>
+        <img src="/screenshots/unread.png" width="920" height="1200" alt="Unread tab with a mention, a reply, and a changes-requested review.">
+        <div>
+          <h3>Unread</h3>
+          <p>Comments, replies, and mentions that need you. Opening one marks it read.</p>
+        </div>
+      </article>
+      <article>
+        <img src="/screenshots/to-review.png" width="920" height="1200" alt="To review tab with pull requests grouped by category, including CI state.">
+        <div>
+          <h3>To review</h3>
+          <p>Categories for what is waiting. Hide one pull request, or a whole repository. CI and stale state stay on the row.</p>
+        </div>
+      </article>
+      <article>
+        <img src="/screenshots/mine.png" width="920" height="1200" alt="Mine tab with your own open pull requests under their repositories.">
+        <div>
+          <h3>Mine</h3>
+          <p>Your own open pull requests, in layers. Repositories fold and stay folded. This tab stays out of the menu bar.</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="setup" aria-labelledby="setup-heading">
+      <h2 id="setup-heading" class="readout section-label">Setup</h2>
+      <ol>
+        <li>
+          <h3>Install Beacon</h3>
+          <p>Open the disk image and drag Beacon to Applications, or use the Homebrew command above.</p>
+        </li>
+        <li>
+          <h3>Sign in</h3>
+          <p>Run <code>gh auth login</code>. If an organization uses single sign-on, authorize the token for that organization.</p>
+        </li>
+        <li>
+          <h3>Look at the menu bar</h3>
+          <p>Two counts appear: unread, and reviews. Your own pull requests are on the Mine tab.</p>
+        </li>
+      </ol>
+      <p class="note">Review filters live in the panel. The config file is <code>~/.config/beacon/config.json</code>. Beacon reads it again on every poll.</p>
+    </section>
+
+    <section class="privacy" aria-labelledby="privacy-heading">
+      <h2 id="privacy-heading" class="readout section-label">Privacy</h2>
+      <p>Beacon reads the token from <code>gh</code>. The token stays on your Mac. Beacon sends it only to <code>api.github.com</code>. There is no analytics, and there is no other server.</p>
+    </section>
+
+    <section class="source" aria-labelledby="source-heading">
+      <h2 id="source-heading" class="readout section-label">Open source</h2>
+      <p>The code is on <a href="https://github.com/Avivhdr/beacon">GitHub</a> under the <a href="https://github.com/Avivhdr/beacon/blob/main/LICENSE">MIT license</a>.</p>
+      <p><a class="pill" href="https://github.com/Avivhdr/beacon/issues/new?template=bug_report.yml">Report a bug</a></p>
+    </section>
+  </main>
+
+  <footer class="bar">
+    <p class="readout">Version <span id="version">1.0.0</span></p>
+    <p class="readout"><a class="link" href="https://github.com/Avivhdr/beacon">GitHub</a></p>
+    <p class="readout">Made by Aviv Hadar</p>
+  </footer>
+  <script src="/main.js"></script>
+</body>
+</html>
