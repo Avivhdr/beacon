@@ -242,3 +242,19 @@ Checked on 2026-10-16.
 ### Decision
 
 A login-item or Finder launch has a short `PATH`. The absolute `gh` fallback stays.
+
+## Phase 9: CI
+
+Checked on 2026-10-16.
+
+### What changed
+
+`.github/workflows/ci.yml` runs on every push and every pull request, on `macos-15`. The job runs `swift test`, installs XcodeGen, generates the Xcode project, and builds Debug with `CODE_SIGNING_ALLOWED=NO`. The README links the CI badge.
+
+### Checks
+
+Push `f16b38f` queued run [38968309744](https://github.com/Avivhdr/beacon/actions/runs/38968309744). The conclusion is success. The Test step, the XcodeGen install, project generation, and the unsigned build all succeeded.
+
+### Decision
+
+Signing and notarization stay on this Mac. CI does not sign the app.
