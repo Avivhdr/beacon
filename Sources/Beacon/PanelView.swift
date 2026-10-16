@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PanelView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var updater: Updater
     let openFilters: () -> Void
     @State private var tab = Tab.notifications
     /// Which side the next tab slides in from: 1 when moving right, -1 when moving left.
@@ -12,15 +13,17 @@ struct PanelView: View {
 
     enum Tab: Int { case notifications, reviews, mine }
 
-    init(model: AppModel, openFilters: @escaping () -> Void) {
+    init(model: AppModel, updater: Updater, openFilters: @escaping () -> Void) {
         self.model = model
+        self.updater = updater
         self.openFilters = openFilters
     }
 
     #if DEBUG
     /// Snapshots open on a chosen tab. Release builds always open on Unread.
-    init(model: AppModel, openFilters: @escaping () -> Void, initialTab: Tab) {
+    init(model: AppModel, updater: Updater, openFilters: @escaping () -> Void, initialTab: Tab) {
         self.model = model
+        self.updater = updater
         self.openFilters = openFilters
         _tab = State(initialValue: initialTab)
     }
@@ -30,7 +33,7 @@ struct PanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            StatusStrip(model: model, openFilters: openFilters)
+            StatusStrip(model: model, updater: updater, openFilters: openFilters)
             header
             TickRuler().frame(height: 7).padding(.horizontal, 18)
             Rectangle().fill(Palette.hairlineStrong).frame(height: 1)
@@ -222,6 +225,7 @@ private struct Counter: View {
 /// Top line: link state, last sync, refresh and the overflow menu.
 private struct StatusStrip: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var updater: Updater
     let openFilters: () -> Void
 
     private var state: (color: Color, pulsing: Bool) {
@@ -241,6 +245,15 @@ private struct StatusStrip: View {
                     .help(model.errors.joined(separator: "\n"))
             }
             Spacer(minLength: 8)
+            if updater.updateReady {
+                Button(action: updater.checkForUpdates) {
+                    Text("Update ready")
+                        .readout(size: 9, tracking: 1.3)
+                        .foregroundStyle(Palette.amber)
+                }
+                .buttonStyle(.plain)
+                .help("Install the update")
+            }
             Button { Task { await model.refresh() } } label: {
                 Image(systemName: "arrow.clockwise")
                     .rotationEffect(.degrees(model.isRefreshing ? 360 : 0))
@@ -253,6 +266,7 @@ private struct StatusStrip: View {
                 Button("Review filters…", action: openFilters)
                 Button("Open config file") { model.openConfig() }
                 Divider()
+                Button("Check for Updates…", action: updater.checkForUpdates)
                 Button("Quit Beacon") { NSApp.terminate(nil) }
             } label: {
                 Image(systemName: "ellipsis")

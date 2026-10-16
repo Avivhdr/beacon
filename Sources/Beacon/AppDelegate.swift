@@ -6,6 +6,7 @@ import UserNotifications
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     private let model = AppModel()
+    private let updater = Updater()
     private var statusItem: NSStatusItem!
     private var panel: FloatingPanel!
     /// When the panel last closed because it lost focus. A click on the menu bar icon closes it that way
@@ -20,8 +21,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         statusItem.button?.target = self
         statusItem.button?.action = #selector(togglePanel)
 
+        updater.prepareForUpdateUI = { [weak self] in self?.hidePanel(immediate: true) }
+        updater.start()
+        #if DEBUG
+        // Lets a local appcast test offer an update without clicking the menu.
+        if CommandLine.arguments.contains("--check-updates") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                self?.updater.checkForUpdates()
+            }
+        }
+        #endif
+
         panel = FloatingPanel(size: PanelView.size)
-        let host = NSHostingView(rootView: PanelView(model: model) { [weak self] in self?.openFilters() })
+        let host = NSHostingView(rootView: PanelView(model: model, updater: updater) { [weak self] in self?.openFilters() })
         host.frame = NSRect(origin: .zero, size: PanelView.size)
         panel.contentView = host
         panel.onCancel = { [weak self] in self?.hidePanel() }
@@ -124,12 +136,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         model.refreshOnOpen()
     }
 
-    private func hidePanel() {
+    private func hidePanel(immediate: Bool = false) {
         if let monitor = outsideClickMonitor {
             NSEvent.removeMonitor(monitor)
             outsideClickMonitor = nil
         }
         guard panel.isVisible else { return }
+        // Sparkle's window is a normal window. This panel is at status-bar level, so it has to leave first.
+        if immediate {
+            panel.alphaValue = 0
+            panel.orderOut(nil)
+            return
+        }
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.14
             context.timingFunction = CAMediaTimingFunction(controlPoints: 0.5, 0, 0.75, 0)

@@ -111,4 +111,30 @@ Those names are worth keeping out of the public history. This phase squashes the
 
 ### Decision
 
-Ask B: the feed stays on a free `*.vercel.app` address. The exact name is checked in Phase 5, before `SUFeedURL` is written into the app. No signed build ships with a placeholder feed URL.
+Ask B: the feed stays on a free `*.vercel.app` address. The host chosen in Phase 4 is `beacon-for-github.vercel.app`. No signed build ships with a placeholder feed URL.
+
+## Phase 4: Sparkle auto-updates
+
+### Feed address
+
+`beacon-app.vercel.app` and `beacon.vercel.app` already serve other sites. The Vercel project `beacon-for-github` (team `aviv-hadars-projects`) received `https://beacon-for-github.vercel.app`. That is the permanent host. New installs will keep checking it.
+
+The project had Vercel Authentication on. That would hide the feed from Sparkle, so deployment protection is off. `curl -sI https://beacon-for-github.vercel.app/appcast.xml` returned 200 with `content-type: application/xml`. The page is a placeholder until Phase 5. The channel is empty.
+
+`SUFeedURL` is `https://beacon-for-github.vercel.app/appcast.xml`.
+
+### What changed
+
+- Sparkle 2.10.0. Focus Pill pins 2.9.4. 2.10.0 is the newer 2.x release, and its minimum is macOS 12, which covers Beacon's macOS 14.
+- `generate_keys --account beacon` stored the private key in the login Keychain. The public key in `Sources/Beacon/Info.plist` is `GaHhzbvJpIsMlj66m8Ov0ZBep1fBFZsjRp8fM1rXHKI=`. No private-key file was written. Where to keep a backup is part of Ask E.
+- Automatic checks are on. The interval is 86400 seconds.
+- `Updater` starts Sparkle at launch. A scheduled find does not open a window. The status strip shows an amber "Update ready" readout. Clicking that readout, or "Check for Updates…", hides the panel, activates the app, and opens Sparkle's window.
+- README and CLAUDE.md record that the feed URL and the public key are permanent.
+
+### Checks
+
+- The Release Info.plist has `SUFeedURL`, `SUPublicEDKey`, `SUEnableAutomaticChecks` true, and `SUScheduledCheckInterval` 86400. The feed URL is the real one.
+- The Release binary contains the text "Check for Updates".
+- Debug offer test. `defaults write com.avivhadar.Beacon SUFeedURL http://127.0.0.1:8765/appcast.xml`. The feed item was build 2, short version 1.0.1, signed with the beacon key. A scheduled check reported `offer 1.0.1 handle=false` (the strip path). A user check, Debug launch argument `--check-updates`, reported `offer 1.0.1 handle=true` (Sparkle's window). The override was deleted. `defaults read SUFeedURL` finds no key.
+- The localhost test build allowed local networking so `http://127.0.0.1` could load. That key is not in the committed Info.plist, and it is not in the Release plist built from this tree.
+- `swift test`: 20 passed.

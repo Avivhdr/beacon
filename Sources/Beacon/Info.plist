@@ -1,13 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Partial Info.plist.
+  Partial Info.plist. Xcode generates the rest from project.yml and merges this
+  file on top. Sparkle's keys are not build settings, so they live here.
 
-  Xcode generates the rest (bundle id, versions, LSUIElement, display name) from
-  project.yml and merges this file on top. Sparkle's feed URL and public key
-  land here in a later phase, because those keys are not build settings.
+  SUFeedURL and SUPublicEDKey are permanent. Every installed copy checks the
+  URL baked in here, and trusts updates signed by this key. Moving the feed or
+  rotating the key strands those copies. The private key stays in the login
+  Keychain under the Sparkle account "beacon". Do not put it in the repo.
+
+  The feed is https://beacon-for-github.vercel.app/appcast.xml (web/appcast.xml
+  on the Vercel project). Binaries are GitHub Release assets named from the feed.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>SUFeedURL</key>
+	<string>https://beacon-for-github.vercel.app/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>GaHhzbvJpIsMlj66m8Ov0ZBep1fBFZsjRp8fM1rXHKI=</string>
+	<!-- Answers Sparkle's first-launch question. A menu bar app should not ask about updates before it has shown anything. -->
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<!-- Once a day. Sparkle's own default. -->
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 </dict>
 </plist>

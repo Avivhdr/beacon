@@ -5,7 +5,7 @@ A native macOS menu bar app (SwiftUI in an AppKit shell) that shows what on GitH
 ## Layout
 
 - `Sources/Core`: models, GitHub client (REST and GraphQL), the feed classifier, config and state. No UI. Logic changes here get tests in `Tests/CoreTests` (`swift test`).
-- `Sources/Beacon`: the app. `AppDelegate` (menu bar item, floating panel, status icon), `AppModel` (state the views observe), `PanelView` (the three tabs), `FiltersView` (review category editor), `Theme` (palette, readout type, lamps, motion). The Xcode project comes from `project.yml` (`make build`). `Package.swift` stays for `Core` so `swift test` stays fast.
+- `Sources/Beacon`: the app. `AppDelegate` (menu bar item, floating panel, status icon), `Updater` (Sparkle), `AppModel` (state the views observe), `PanelView` (the three tabs), `FiltersView` (review category editor), `Theme` (palette, readout type, lamps, motion). The Xcode project comes from `project.yml` (`make build`). `Package.swift` stays for `Core` so `swift test` stays fast.
 - `scripts/`: build and replay helpers. `README.md` is the user-facing reference for behavior and config keys.
 
 ## Design
@@ -15,6 +15,10 @@ Read [DESIGN.md](DESIGN.md) before changing any UI, here or on the website. One 
 ## Launch work
 
 [docs/LAUNCH_PLAN.md](docs/LAUNCH_PLAN.md) is the runbook for taking Beacon public: signing, notarization, Sparkle updates, the website, the Homebrew tap and releases. Progress goes into `docs/LAUNCH_REPORT.md`.
+
+## Updates
+
+`SUFeedURL` is `https://beacon-for-github.vercel.app/appcast.xml`. `SUPublicEDKey` is in `Sources/Beacon/Info.plist`. Both are permanent. A signed build must keep this feed URL. The private half of the update key stays in the login Keychain, Sparkle account `beacon`. Do not commit it, and do not print it.
 
 ## Conventions
 

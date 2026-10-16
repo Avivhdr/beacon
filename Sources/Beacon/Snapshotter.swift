@@ -24,7 +24,7 @@ enum Snapshotter {
 
     private static func capture(_ dir: URL, _ name: String, tab: PanelView.Tab, model: AppModel) {
         let size = PanelView.size
-        let host = NSHostingView(rootView: PanelView(model: model, openFilters: {}, initialTab: tab))
+        let host = NSHostingView(rootView: PanelView(model: model, updater: Updater(), openFilters: {}, initialTab: tab))
         host.frame = NSRect(origin: .zero, size: size)
 
         let window = NSWindow(

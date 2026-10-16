@@ -48,6 +48,14 @@ If an organization uses SAML single sign-on, authorize the `gh` token for that o
 
 The token stays on your Mac. Beacon sends it only to `api.github.com`. There is no analytics, and there is no other server.
 
+The website is <https://beacon-for-github.vercel.app>.
+
+## Updates
+
+Beacon looks for a new version once a day. "Check for Updates…" in the ⋯ menu checks now.
+
+The update feed is <https://beacon-for-github.vercel.app/appcast.xml>. The public update key is `GaHhzbvJpIsMlj66m8Ov0ZBep1fBFZsjRp8fM1rXHKI=`. Both are compiled into the app. They stay. A new feed address, or a new key, would leave every installed copy unable to update.
+
 ## What lands in the notifications feed
 
 Beacon polls `/notifications?participating=true` for pull requests with new activity, then loads each changed pull request with GraphQL.
