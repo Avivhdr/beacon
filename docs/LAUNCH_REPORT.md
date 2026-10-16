@@ -292,3 +292,34 @@ Check for Updates, user-initiated, against the live feed: Sparkle opened a 260 b
 ### Decision
 
 The local cask still has the Phase 6 disk-image hash. A real `./release.sh` replaces that hash from the disk image it just built. The public tap is still not created.
+
+## Phase 11: the repository is public
+
+Checked on 2026-10-17.
+
+Aviv approved the public step. The 1.0.0 release is not started.
+
+### What changed
+
+`gh repo edit Avivhdr/beacon --visibility public --accept-visibility-change-consequences`.
+
+Private vulnerability reporting is on.
+
+The public tap is https://github.com/Avivhdr/homebrew-tap. Commit `6cf6626` is "Add the Beacon cask."
+
+### Checks
+
+- `gh repo view`: visibility PUBLIC. The repository is not private. The homepage is `https://beacon-for-github.vercel.app`.
+- An anonymous `curl` of https://github.com/Avivhdr/beacon returned HTTP 200.
+- The anonymous API reports visibility public, private false, and the same homepage.
+- While the repository was private, `PUT /repos/Avivhdr/beacon/private-vulnerability-reporting` returned 404. After it was public, the same call succeeded. `GET` returns `{"enabled":true}`.
+- The tap is public. The description is "Homebrew cask for Beacon". The default branch is main. The root commit is `6cf6626`.
+- `Casks/beacon.rb` is blob `ccf6503f09781ea8bd5dbcbace9fcff2de19e685`. The version is 1.0.0. The sha256 is still the Phase 6 hash `e405aa3320b4ba00b6a431179a180aa0869f6a05933c1f96fca259544514a650`. A real `./release.sh` replaces that hash from the disk image it builds.
+- The tap checkout is `6cf6626` in this worktree at `dist/homebrew-tap`, and at `/Users/avivhadar/repos/beacon/dist/homebrew-tap`. `release.sh` can push the tap only from `/Users/avivhadar/repos/beacon`.
+- `brew install --cask avivhdr/tap/beacon` cannot download the disk image yet. The v1.0.0 release does not exist.
+- The live feed is still the empty channel. No GitHub Release exists.
+- The homepage was already the Vercel site. The social preview image is not uploaded. That step comes after the release.
+
+### Decision
+
+`./release.sh` is not run. It publishes a binary and an update feed that every later install trusts. It also needs a place to keep the Sparkle private-key backup. Both wait for Aviv.
