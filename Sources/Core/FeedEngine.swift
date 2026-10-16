@@ -132,7 +132,7 @@ public final class FeedEngine {
         var results: [CategoryResult] = []
         for category in config.categories {
             guard let query = category.searchQuery(teammates: teammates, alsoExcluding: config.excludeRepos) else {
-                results.append(CategoryResult(name: category.name, count: 0, prs: [], note: "Set teammates or teammatesTeam in the config"))
+                results.append(CategoryResult(name: category.name, count: 0, prs: [], note: "Add teammates in the config when you want this category."))
                 continue
             }
             do {

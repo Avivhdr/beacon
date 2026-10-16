@@ -40,7 +40,7 @@ Install the [GitHub CLI](https://cli.github.com/) and sign in:
 gh auth login
 ```
 
-Beacon reads the token with `gh auth token`. If `GITHUB_TOKEN` is set, Beacon uses that value instead.
+Beacon reads the token with `gh auth token`. If `GITHUB_TOKEN` is set, Beacon uses that value instead. If `gh` is missing, or GitHub rejects the token, the panel shows the sign-in steps and a Try again button.
 
 If an organization uses SAML single sign-on, authorize the `gh` token for that organization. Beacon can only see the organizations the token is allowed to see. In GitHub: Settings, Developer settings, Personal access tokens, then authorize the token for each SSO organization. For `gh`, run `gh auth refresh -s read:org` and follow the SSO prompts.
 
@@ -52,7 +52,7 @@ The website is <https://beacon-for-github.vercel.app>.
 
 ## Updates
 
-Beacon looks for a new version once a day. "Check for Updates…" in the ⋯ menu checks now.
+Beacon looks for a new version once a day. "Check for Updates…" in the ⋯ menu checks now. That menu also has Open at Login, About Beacon, and Report a Bug. Report a Bug opens a GitHub issue with the Beacon version, the macOS version, and the CPU architecture filled in.
 
 The update feed is <https://beacon-for-github.vercel.app/appcast.xml>. The public update key is `GaHhzbvJpIsMlj66m8Ov0ZBep1fBFZsjRp8fM1rXHKI=`. Both are compiled into the app. They stay. A new feed address, or a new key, would leave every installed copy unable to update.
 
@@ -85,7 +85,7 @@ You do not have to edit the file by hand for review filters. In the Reviews tab,
 - `categories` is a list of `{ name, query, includeRepos, excludeRepos }`. A query is any GitHub search string. `{teammates}` expands to `author:` for every teammate. `includeRepos` limits the category to those repositories. The defaults are Direct, Team, and Teammates.
 - `excludeRepos` at the top level hides repositories from every category.
 - `skipLabels` (default `["DO NOT REVIEW"]`, any case): pull requests with one of these labels stay in the list, at the bottom, dimmed, with the label shown. They do not count toward any number.
-- `teammates` lists logins. `teammatesTeam` (`org/slug`) adds that team's members. The Teammates category stays empty until one of these is set.
+- `teammates` lists logins. `teammatesTeam` (`org/slug`) adds that team's members. The Teammates category waits until you set one of these. Nothing else breaks.
 - `badgeChain` decides the review count in the menu bar. The first category with open pull requests wins. `"dim": true` greys that count out.
 - `myPRGroups` splits the Mine tab into layers, as a list of `{ name, repos }`. A repository entry is `org/repo`, or a bare `org` for every repository that organization owns. Each pull request goes to the first group that lists its repository. A group with an empty `repos` list takes everything the earlier groups did not. The default is one layer named Open. Example: `[{ "name": "Work", "repos": ["octo-org"] }, { "name": "Private", "repos": [] }]`.
 - `mentionTeams` limits which `@org/team` mentions count. Leave it out to count every team you are in.

@@ -2,6 +2,12 @@ import Foundation
 import Testing
 @testable import Core
 
+@Test func ghLookupUsesPathBeforeTheUsualInstallLocations() {
+    #expect(TokenProvider.ghExecutable(path: "/tmp/nowhere:/usr/bin", isExecutable: { _ in false }) == nil)
+    #expect(TokenProvider.ghExecutable(path: "/opt/homebrew/bin:/usr/bin", isExecutable: { $0 == "/opt/homebrew/bin/gh" }) == "/opt/homebrew/bin/gh")
+    #expect(TokenProvider.ghExecutable(path: "/usr/bin", isExecutable: { $0 == "/usr/local/bin/gh" }) == "/usr/local/bin/gh")
+}
+
 private let me = Author(login: "Avivhdr")
 private let mona = Author(login: "mona")
 private let ci = Author(login: "github-actions", isBot: true)

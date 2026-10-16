@@ -17,6 +17,27 @@ final class AppModel: ObservableObject {
     /// Your own open PRs by `myPRGroups`. Only shown in the panel, never in the menu bar.
     @Published private(set) var mine: [CategoryResult] = []
     @Published private(set) var errors: [String] = []
+
+    #if DEBUG
+    /// Shows the sign-in panel for one error string. Release builds have no such hook.
+    func previewSignInError(_ message: String) {
+        errors = [message]
+    }
+
+    /// Same text `TokenProvider` throws when `gh` is not on this Mac.
+    func previewMissingGitHubCLI() {
+        previewSignInError("gh not found. Install it with `brew install gh` and run `gh auth login`.")
+    }
+    #endif
+
+    /// gh is missing, or GitHub rejected the token. The panel shows the sign-in steps.
+    var needsSignIn: Bool {
+        errors.contains { message in
+            message.contains("gh not found")
+                || message.contains("gh auth token")
+                || message.contains("GitHub 401")
+        }
+    }
     @Published private(set) var lastUpdated: Date?
     @Published private(set) var isRefreshing = false
     /// Notifications tab shows read items too. Reset every time the panel opens.

@@ -216,3 +216,29 @@ The sha256 is the dry-run disk image `e405aa3320b4ba00b6a431179a180aa0869f6a0593
 ### Decision
 
 The tap stays local until Ask D.
+
+## Phase 8: polish for people who aren't Aviv
+
+Checked on 2026-10-16.
+
+### What changed
+
+- A missing `gh`, or a token GitHub rejects, opens a sign-in panel. It uses the radar, the two commands `brew install gh` and `gh auth login`, and a Try again pill. The status line reads SIGN IN.
+- The ⋯ menu adds Open at Login (`SMAppService.mainApp`), About Beacon (the standard About panel, with the website and GitHub as credits), and Report a Bug. Report a Bug opens the bug-report issue form with the Beacon version, the macOS version, and the CPU architecture filled in.
+- The Teammates note is now "Add teammates in the config when you want this category." The default Mine layer is still Open. The README Work/Private example stays.
+- Beacon looks for `gh` on `PATH` first, then in `/opt/homebrew/bin/gh`, `/usr/local/bin/gh`, and `/usr/bin/gh`.
+
+### Checks
+
+- `swift test`: 21 passed. That includes `ghLookupUsesPathBeforeTheUsualInstallLocations`.
+- `env GITHUB_TOKEN=bad build/Build/Products/Debug/Beacon.app/Contents/MacOS/Beacon --dump` printed `error: GitHub 401 on /user: Bad credentials`.
+- `env -u GITHUB_TOKEN PATH=/usr/bin:/bin` with the same `--dump` still found Homebrew `gh`. The feed lines were `Teammates: 0 (Add teammates in the config when you want this category.)` and `mine/Open: 9`.
+- Off-screen captures (`--snapshot-signin`) of both panels show the radar, the matching sentence, both commands in lower case, and Try again. A short `PATH` cannot hide `gh` on this Mac, because the install-path fallback is required for a Finder launch. The missing-`gh` panel uses the same sentence `TokenProvider` throws.
+- `--try-login-item`: Open at Login was off. Register turned it on (`SMAppServiceStatus` raw value 1). Unregister restored it to off (raw value 0). System Settings was already open. Its process id did not change.
+- `--simulate-wake` posted `NSWorkspace.didWakeNotification`. The observer called `start()` and printed `wake: polling resumed`.
+- `--show-about` opened an on-screen Beacon window, 284 by 204 points. The bug URL was `https://github.com/Avivhdr/beacon/issues/new?template=bug_report.yml&beacon-version=1.0.0%20(1)&macos-version=27.0.1%20arm64`.
+- `docs/screenshots/to-review.png` and `web/screenshots/to-review.png` show the new Teammates note.
+
+### Decision
+
+A login-item or Finder launch has a short `PATH`. The absolute `gh` fallback stays.

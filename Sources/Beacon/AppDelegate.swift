@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import ServiceManagement
 import SwiftUI
 import UserNotifications
 
@@ -30,6 +31,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 self?.updater.checkForUpdates()
             }
         }
+        if CommandLine.arguments.contains("--open-panel") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                self?.showPanel()
+            }
+        }
+        if CommandLine.arguments.contains("--simulate-wake") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.didWakeNotification, object: NSWorkspace.shared)
+            }
+        }
+        if CommandLine.arguments.contains("--try-login-item") {
+            let before = LoginItem.isEnabled
+            let forward = LoginItem.setEnabled(!before)
+            let mid = LoginItem.isEnabled
+            let back = LoginItem.setEnabled(before)
+            debugLine("login-item: enabled=\(before) forward=\(forward) mid=\(mid) back=\(back) restored=\(LoginItem.isEnabled)")
+            exit(0)
+        }
+        if CommandLine.arguments.contains("--show-about") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                BeaconActions.showAbout()
+                let deadline = Date().addingTimeInterval(0.5)
+                while Date() < deadline {
+                    RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+                }
+                if let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] {
+                    for window in info where (window[kCGWindowOwnerName as String] as? String) == "Beacon" {
+                        let bounds = window[kCGWindowBounds as String] as? [String: Any] ?? [:]
+                        let title = window[kCGWindowName as String] as? String ?? ""
+                        self?.debugLine("window: \(title) \(bounds)")
+                    }
+                }
+                self?.debugLine("about: \(BeaconActions.bugReportURL().absoluteString)")
+                exit(0)
+            }
+        }
         #endif
 
         panel = FloatingPanel(size: PanelView.size)
@@ -55,12 +92,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
 
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.model.start() }
+            MainActor.assumeIsolated {
+                self?.model.start()
+                #if DEBUG
+                if CommandLine.arguments.contains("--simulate-wake") {
+                    self?.debugLine("wake: polling resumed")
+                    exit(0)
+                }
+                #endif
+            }
         }
 
         updateIcon()
+        #if DEBUG
+        let skipPoll = CommandLine.arguments.contains("--preview-missing-gh")
+            || CommandLine.arguments.contains("--show-about")
+            || CommandLine.arguments.contains("--try-login-item")
+        if CommandLine.arguments.contains("--preview-missing-gh") {
+            model.previewMissingGitHubCLI()
+        }
+        if !skipPoll {
+            model.start()
+        }
+        #else
         model.start()
+        #endif
     }
+
+    #if DEBUG
+    /// `print` stays in the buffer when stdout is a pipe, and a kill drops it. This writes the line now.
+    private func debugLine(_ line: String) {
+        print(line)
+        fflush(stdout)
+        let path = "/tmp/beacon-phase8.log"
+        let data = Data((line + "\n").utf8)
+        if FileManager.default.fileExists(atPath: path), let handle = FileHandle(forWritingAtPath: path) {
+            handle.seekToEndOfFile()
+            handle.write(data)
+            try? handle.close()
+        } else {
+            FileManager.default.createFile(atPath: path, contents: data)
+        }
+    }
+    #endif
 
     private func updateIcon() {
         let badge = model.reviewBadge
@@ -261,4 +335,73 @@ enum StatusIcon {
         image.accessibilityDescription = "Beacon, nothing needs you"
         return image
     }()
+}
+
+enum LoginItem {
+    static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
+
+    /// The menu reads the system status the next time it opens. A failed call leaves that status as it is.
+    @discardableResult
+    static func setEnabled(_ enabled: Bool) -> String {
+        let service = SMAppService.mainApp
+        do {
+            if enabled {
+                try service.register()
+                if service.status == .requiresApproval {
+                    SMAppService.openSystemSettingsLoginItems()
+                    return "requires-approval"
+                }
+                return "ok \(service.status)"
+            } else {
+                try service.unregister()
+                return "ok \(service.status)"
+            }
+        } catch {
+            let message = "Open at Login failed: \(error.localizedDescription)"
+            NSLog("%@", message)
+            return message
+        }
+    }
+}
+
+enum BeaconActions {
+    static func showAbout() {
+        let credits = NSMutableAttributedString()
+        func line(_ label: String, _ url: String) {
+            if credits.length > 0 {
+                credits.append(NSAttributedString(string: "\n"))
+            }
+            let part = NSMutableAttributedString(string: label)
+            let range = NSRange(location: 0, length: part.length)
+            part.addAttribute(.link, value: url, range: range)
+            part.addAttribute(.font, value: NSFont.systemFont(ofSize: 11), range: range)
+            credits.append(part)
+        }
+        line("Website", "https://beacon-for-github.vercel.app")
+        line("GitHub", "https://github.com/Avivhdr/beacon")
+        NSApp.activate()
+        NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
+    }
+
+    static func bugReportURL() -> URL {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        let build = info?["CFBundleVersion"] as? String ?? "1"
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        let osText = "\(os.majorVersion).\(os.minorVersion).\(os.patchVersion)"
+        #if arch(arm64)
+        let arch = "arm64"
+        #elseif arch(x86_64)
+        let arch = "x86_64"
+        #else
+        let arch = "unknown"
+        #endif
+        var parts = URLComponents(string: "https://github.com/Avivhdr/beacon/issues/new")!
+        parts.queryItems = [
+            URLQueryItem(name: "template", value: "bug_report.yml"),
+            URLQueryItem(name: "beacon-version", value: "\(version) (\(build))"),
+            URLQueryItem(name: "macos-version", value: "\(osText) \(arch)"),
+        ]
+        return parts.url!
+    }
 }

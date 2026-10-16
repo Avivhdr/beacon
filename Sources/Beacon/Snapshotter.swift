@@ -22,6 +22,18 @@ enum Snapshotter {
         print("wrote snapshots to \(dir.path)")
     }
 
+    /// The two sign-in panels. Screen Recording is not required: this draws off screen.
+    static func captureSignIn(directory: String) {
+        let dir = URL(fileURLWithPath: directory, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let missing = AppModel()
+        missing.previewMissingGitHubCLI()
+        capture(dir, "signin-missing.png", tab: .notifications, model: missing)
+        let rejected = AppModel()
+        rejected.previewSignInError("GitHub 401 on /user: Bad credentials")
+        capture(dir, "signin-rejected.png", tab: .notifications, model: rejected)
+    }
+
     private static func capture(_ dir: URL, _ name: String, tab: PanelView.Tab, model: AppModel) {
         let size = PanelView.size
         let host = NSHostingView(rootView: PanelView(model: model, updater: Updater(), openFilters: {}, initialTab: tab))
@@ -161,7 +173,7 @@ enum Snapshotter {
             categories: [
                 CategoryResult(name: "Direct", count: 2, prs: direct),
                 CategoryResult(name: "Team", count: 1, prs: team),
-                CategoryResult(name: "Teammates", count: 0, prs: [], note: "Set teammates or teammatesTeam in the config"),
+                CategoryResult(name: "Teammates", count: 0, prs: [], note: "Add teammates in the config when you want this category."),
             ],
             mine: [
                 CategoryResult(name: "Work", count: 3, prs: mineWork),

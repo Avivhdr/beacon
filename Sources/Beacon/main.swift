@@ -5,6 +5,14 @@ import Core
 Migration.migrateIfNeeded()
 
 #if DEBUG
+if let flag = CommandLine.arguments.firstIndex(of: "--snapshot-signin"), CommandLine.arguments.count > flag + 1 {
+    let directory = CommandLine.arguments[flag + 1]
+    MainActor.assumeIsolated {
+        Snapshotter.captureSignIn(directory: directory)
+    }
+    exit(0)
+}
+
 if let flag = CommandLine.arguments.firstIndex(of: "--snapshot"), CommandLine.arguments.count > flag + 1 {
     let directory = CommandLine.arguments[flag + 1]
     MainActor.assumeIsolated {

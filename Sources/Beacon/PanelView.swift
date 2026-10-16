@@ -34,27 +34,31 @@ struct PanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             StatusStrip(model: model, updater: updater, openFilters: openFilters)
-            header
-            TickRuler().frame(height: 7).padding(.horizontal, 18)
-            Rectangle().fill(Palette.hairlineStrong).frame(height: 1)
+            if model.needsSignIn {
+                SignInState(detail: signInDetail) { Task { await model.refresh() } }
+            } else {
+                header
+                TickRuler().frame(height: 7).padding(.horizontal, 18)
+                Rectangle().fill(Palette.hairlineStrong).frame(height: 1)
 
-            ZStack {
-                switch tab {
-                case .notifications:
-                    NotificationsTab(model: model)
-                        .transition(slide)
-                case .reviews:
-                    ReviewsTab(model: model, openFilters: openFilters)
-                        .transition(slide)
-                case .mine:
-                    MineTab(model: model)
-                        .transition(slide)
+                ZStack {
+                    switch tab {
+                    case .notifications:
+                        NotificationsTab(model: model)
+                            .transition(slide)
+                    case .reviews:
+                        ReviewsTab(model: model, openFilters: openFilters)
+                            .transition(slide)
+                    case .mine:
+                        MineTab(model: model)
+                            .transition(slide)
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                // A new id each time the panel opens, so the rows play their entrance again.
+                .id(model.panelOpens)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-            // A new id each time the panel opens, so the rows play their entrance again.
-            .id(model.panelOpens)
         }
         .frame(width: Self.size.width, height: Self.size.height)
         .background(
@@ -67,6 +71,13 @@ struct PanelView: View {
         )
         .environment(\.colorScheme, .dark)
         .tint(Palette.amber)
+    }
+
+    private var signInDetail: String {
+        if model.errors.contains(where: { $0.contains("gh not found") }) {
+            return "Install the GitHub CLI, then sign in."
+        }
+        return "Sign in again. GitHub did not accept the token."
     }
 
     private var slide: AnyTransition {
@@ -230,6 +241,7 @@ private struct StatusStrip: View {
 
     private var state: (color: Color, pulsing: Bool) {
         if model.isRefreshing { return (Palette.amber, true) }
+        if model.needsSignIn { return (Palette.amber, false) }
         if !model.errors.isEmpty { return (Palette.red, false) }
         return (Palette.green, false)
     }
@@ -240,7 +252,7 @@ private struct StatusStrip: View {
             TimelineView(.periodic(from: .now, by: 5)) { context in
                 Text(statusText(now: context.date))
                     .readout(size: 9, tracking: 1.3)
-                    .foregroundStyle(model.errors.isEmpty ? Palette.faint : Palette.red)
+                    .foregroundStyle(model.needsSignIn ? Palette.amber : (model.errors.isEmpty ? Palette.faint : Palette.red))
                     .lineLimit(1)
                     .help(model.errors.joined(separator: "\n"))
             }
@@ -266,6 +278,19 @@ private struct StatusStrip: View {
                 Button("Review filters…", action: openFilters)
                 Button("Open config file") { model.openConfig() }
                 Divider()
+                Toggle("Open at Login", isOn: Binding(
+                    get: { LoginItem.isEnabled },
+                    set: { LoginItem.setEnabled($0) }
+                ))
+                Button("About Beacon") {
+                    updater.prepareForUpdateUI?()
+                    BeaconActions.showAbout()
+                }
+                Button("Report a Bug…") {
+                    updater.prepareForUpdateUI?()
+                    NSWorkspace.shared.open(BeaconActions.bugReportURL())
+                }
+                Divider()
                 Button("Check for Updates…", action: updater.checkForUpdates)
                 Button("Quit Beacon") { NSApp.terminate(nil) }
             } label: {
@@ -284,6 +309,7 @@ private struct StatusStrip: View {
 
     private func statusText(now: Date) -> String {
         if model.isRefreshing { return "Syncing" }
+        if model.needsSignIn { return "Sign in" }
         if let error = model.errors.first { return "Link error · \(error)" }
         guard let lastUpdated = model.lastUpdated else { return "Connecting" }
         let seconds = Int(max(0, now.timeIntervalSince(lastUpdated)))
@@ -1018,6 +1044,41 @@ private struct LabelChip: View {
             .padding(.vertical, 2)
             .background(RoundedRectangle(cornerRadius: 3).fill(color.opacity(0.14)))
             .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(color.opacity(0.45)))
+    }
+}
+
+/// First launch, or a rejected token. The steps are the ones a new person actually runs.
+private struct SignInState: View {
+    let detail: String
+    let retry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Radar(sweeping: true)
+                .frame(width: 168, height: 168)
+                .padding(.bottom, 22)
+            Text("Sign in")
+                .readout(size: 11, tracking: 3)
+                .foregroundStyle(Palette.text)
+            Text(detail)
+                .font(.system(size: 12.5))
+                .foregroundStyle(Palette.dim)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 300)
+                .padding(.top, 8)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("brew install gh")
+                Text("gh auth login")
+            }
+            .font(.system(size: 12.5, design: .monospaced))
+            .foregroundStyle(Palette.text)
+            .padding(.top, 18)
+            Button("Try again", action: retry)
+                .buttonStyle(PillButton())
+                .padding(.top, 18)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.bottom, 24)
     }
 }
 

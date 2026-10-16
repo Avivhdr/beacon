@@ -181,10 +181,10 @@ public struct AppError: LocalizedError {
 
 public enum TokenProvider {
     /// Uses GITHUB_TOKEN if set, otherwise `gh auth token`.
+    /// PATH is checked first so a login shell and a test can both choose which `gh` runs.
     public static func token() throws -> String {
         if let token = ProcessInfo.processInfo.environment["GITHUB_TOKEN"], !token.isEmpty { return token }
-        let candidates = ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", "/usr/bin/gh"]
-        guard let gh = candidates.first(where: FileManager.default.isExecutableFile(atPath:)) else {
+        guard let gh = ghExecutable(path: ProcessInfo.processInfo.environment["PATH"], isExecutable: FileManager.default.isExecutableFile(atPath:)) else {
             throw AppError("gh not found. Install it with `brew install gh` and run `gh auth login`.")
         }
         let process = Process()
@@ -201,5 +201,12 @@ public enum TokenProvider {
             throw AppError("`gh auth token` failed. Run `gh auth login`.")
         }
         return token
+    }
+
+    /// `gh` on PATH, then the usual install locations.
+    static func ghExecutable(path: String?, isExecutable: (String) -> Bool) -> String? {
+        let onPath = (path ?? "").split(separator: ":").map { URL(fileURLWithPath: String($0)).appendingPathComponent("gh").path }
+        let candidates = onPath + ["/opt/homebrew/bin/gh", "/usr/local/bin/gh", "/usr/bin/gh"]
+        return candidates.first(where: isExecutable)
     }
 }
