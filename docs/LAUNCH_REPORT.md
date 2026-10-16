@@ -176,3 +176,27 @@ The first CLI deploy uploaded this Mac's build folders (about 7661 files). `verc
 ### Decision
 
 Ask B was already answered. The host is the address Phase 4 compiled into the app. No new question.
+
+## Phase 6: release pipeline
+
+Checked on 2026-10-16.
+
+### What changed
+
+- `release.sh` builds, notarizes, and writes `dist/Beacon-<version>.zip` plus `dist/appcast.xml`. A real run also publishes a GitHub release (`Beacon-<version>.zip`, `Beacon-<version>.dmg`, and the same disk image as `Beacon.dmg`), commits `project.yml` and `web/appcast.xml`, pushes `main`, checks the live feed and the download, and updates the Homebrew cask.
+- `--dry-run` publishes nothing. It restores `CURRENT_PROJECT_VERSION` on the way out, including after a failure.
+- `CHANGELOG.md` has the 1.0.0 notes. `generate_appcast --account beacon` embeds that section.
+- `.claude/skills/release/SKILL.md` can only be started by a person.
+
+### Checks
+
+`./release.sh --dry-run` for 1.0.0, build 1 → 2.
+
+- App submission `0b13bb97-6dfe-4d21-bb2f-1318169c76bc`: Accepted, stapled. `spctl` says Notarized Developer ID.
+- Disk image submission `71d42d55-f779-4210-b3ce-1769e93cb478`: Accepted, stapled. `stapler validate` succeeded for the disk image and the app.
+- `dist/Beacon-1.0.0.zip` has `Beacon.app` at the archive root. `dist/appcast.xml` is build 2, short version 1.0.0, enclosure length 2579891.
+- `project.yml` is back to build 1. `web/appcast.xml` is still the empty channel. The dry run did not commit or publish.
+
+### Decision
+
+Binaries go to GitHub Releases. The feed stays on `https://beacon-for-github.vercel.app/appcast.xml`.
