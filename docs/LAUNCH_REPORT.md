@@ -258,3 +258,37 @@ Push `f16b38f` queued run [38968309744](https://github.com/Avivhdr/beacon/action
 ### Decision
 
 Signing and notarization stay on this Mac. CI does not sign the app.
+
+## Phase 10: dry run of the whole release
+
+Checked on 2026-10-16.
+
+### What changed
+
+`./release.sh --dry-run` built and signed 1.0.0 again, after the Phase 8 changes. It published nothing. `project.yml` is still build 1. `web/appcast.xml` is still the empty channel.
+
+Debug launches can print the Sparkle result. Release builds do not. The menu item is unchanged.
+
+### Checks
+
+`./release.sh --dry-run` for 1.0.0, build 1 to 2. Exit 0.
+
+- App submission `865137e6-9f6c-4e43-9395-31bce95b737b`: Accepted, stapled. `spctl` says Notarized Developer ID.
+- Disk image submission `28b5382d-fb78-41b6-98af-f077cff3de80`: Accepted, stapled.
+- `dist/Beacon-1.0.0.zip` has `Beacon.app` at the archive root. `dist/appcast.xml` is build 2, short version 1.0.0, minimum system 14.0, enclosure length 2600106.
+- Disk image sha256 `3ccc908b9e667c0e2890cfb1522da49515b988b3648a6356b037e86936d2e493`. Zip sha256 `ef01cb06bd9ef9393563c4ec7a59d10eb457b62d44cc477a06b9c1926e62eb2a`.
+- `project.yml` is build 1. `git status` was clean before the debug log lines in this phase. The live feed is still the empty 185-byte channel. `curl` returned HTTP 200 and `content-type: application/xml`.
+
+The disk image was mounted and copied to `/Applications/Beacon.app`. The copy that was already there moved to `/tmp/Beacon-pre-phase10.app`. The installed app is 1.0.0 (2), Developer ID, stapled. `spctl -a -vvv` says Notarized Developer ID. It launched, and `tell application "Beacon" to quit` quit it.
+
+Migration on that binary: the live config and state were moved aside, the legacy files stayed, and the app copied both into the Beacon paths. The user's files were then put back. `cmp` said the restore matched.
+
+The app icon is the amber radar on a dark rounded square.
+
+About Beacon, from this source: window 284 by 204. The text was "Beacon", "Version 1.0.0 (2)", "Website", and "GitHub". The bug URL was `https://github.com/Avivhdr/beacon/issues/new?template=bug_report.yml&beacon-version=1.0.0%20(2)&macos-version=27.0.1%20arm64`.
+
+Check for Updates, user-initiated, against the live feed: Sparkle opened a 260 by 218 window. The text was "You’re up to date!" and "Beacon 1.0.0 is currently the newest version available." Assistive access is off for this session, so the installed app's menu was not clicked. The check used the same feed URL and the same menu action.
+
+### Decision
+
+The local cask still has the Phase 6 disk-image hash. A real `./release.sh` replaces that hash from the disk image it just built. The public tap is still not created.

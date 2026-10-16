@@ -26,8 +26,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         updater.start()
         #if DEBUG
         // Lets a local appcast test offer an update without clicking the menu.
+        // The launch check has to finish first. An earlier call is swallowed and shows no result.
         if CommandLine.arguments.contains("--check-updates") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
                 self?.updater.checkForUpdates()
             }
         }
@@ -63,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                         self?.debugLine("window: \(title) \(bounds)")
                     }
                 }
+                debugDescribeWindows()
                 self?.debugLine("about: \(BeaconActions.bugReportURL().absoluteString)")
                 exit(0)
             }
@@ -336,6 +338,33 @@ enum StatusIcon {
         return image
     }()
 }
+
+#if DEBUG
+/// Reads the app's own windows. Screen recording is not required.
+func debugDescribeWindows() {
+    for window in NSApp.windows where window.isVisible {
+        print("win: \(window.title) \(Int(window.frame.width))x\(Int(window.frame.height))")
+        func walk(_ view: NSView) {
+            if let text = view as? NSTextField, !text.stringValue.isEmpty {
+                print("text: \(text.stringValue)")
+            }
+            if let text = view as? NSTextView, !text.string.isEmpty {
+                print("text: \(text.string)")
+            }
+            if let button = view as? NSButton, !button.title.isEmpty {
+                print("button: \(button.title)")
+            }
+            for sub in view.subviews {
+                walk(sub)
+            }
+        }
+        if let content = window.contentView {
+            walk(content)
+        }
+    }
+    fflush(stdout)
+}
+#endif
 
 enum LoginItem {
     static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
