@@ -27,7 +27,7 @@ Do not change these. A new feed address or a new key leaves every installed copy
 - `SUFeedURL`: `https://beacon-for-github.vercel.app/appcast.xml`
 - `SUPublicEDKey`: `GaHhzbvJpIsMlj66m8Ov0ZBep1fBFZsjRp8fM1rXHKI=`
 - Notary profile: `focuspill-notary`
-- The Sparkle private key stays in the login Keychain under account `beacon`. Aviv keeps the backup in Bitwarden. The key is not in this repository and not in this report.
+- The Sparkle private key stays in the login Keychain under account `beacon`. Aviv keeps the backup in Bitwarden. The export file was deleted from this Mac after he stored it. The key is not in this repository and not in this report.
 
 ## How to cut the next release
 
@@ -35,7 +35,7 @@ On a checkout of `main` at `/Users/avivhadar/repos/beacon`, bump `MARKETING_VERS
 
 ## Follow-ups
 
-- Store the exported Sparkle private key in Bitwarden, then delete the export from this Mac.
+None.
 
 The social preview is set. GitHub has no API for that image, so it was uploaded in the repository settings. The card is `web/og.png` (1200×630). GitHub asks for 1280×640 for the sharpest card. 1200×630 is above the 640×320 minimum, and the settings page shows this image.
 
