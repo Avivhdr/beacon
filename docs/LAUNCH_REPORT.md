@@ -1,6 +1,45 @@
 # Beacon launch report
 
-Running log for [LAUNCH_PLAN.md](LAUNCH_PLAN.md). Each phase lists what changed, how it was checked, and any decision made on the way.
+Beacon 1.0.0 (build 2) is public as of 2026-10-17. It is a macOS menu bar app for GitHub. It shows unread activity, pull requests that need a review, and your own open pull requests. The binary is Developer ID signed, notarized, and stapled.
+
+People install it from the site, from the GitHub release, or with Homebrew:
+
+```sh
+brew install --cask avivhdr/tap/beacon
+```
+
+## Links
+
+| | |
+|---|---|
+| Site | https://beacon-for-github.vercel.app |
+| Repository | https://github.com/Avivhdr/beacon |
+| Release | https://github.com/Avivhdr/beacon/releases/tag/v1.0.0 |
+| Update feed | https://beacon-for-github.vercel.app/appcast.xml |
+| Disk image | https://github.com/Avivhdr/beacon/releases/latest/download/Beacon.dmg |
+| Homebrew tap | https://github.com/Avivhdr/homebrew-tap |
+| CI | https://github.com/Avivhdr/beacon/actions/workflows/ci.yml |
+
+## Permanent values
+
+Do not change these. A new feed address or a new key leaves every installed copy unable to update.
+
+- `SUFeedURL`: `https://beacon-for-github.vercel.app/appcast.xml`
+- `SUPublicEDKey`: `GaHhzbvJpIsMlj66m8Ov0ZBep1fBFZsjRp8fM1rXHKI=`
+- Notary profile: `focuspill-notary`
+- The Sparkle private key stays in the login Keychain under account `beacon`. Aviv keeps the backup in Bitwarden. The key is not in this repository and not in this report.
+
+## How to cut the next release
+
+On a checkout of `main` at `/Users/avivhadar/repos/beacon`, bump `MARKETING_VERSION` in `project.yml`. Leave `CURRENT_PROJECT_VERSION` alone. The release script increments it. Then run `/release`. Do not change `SUFeedURL` or `SUPublicEDKey`.
+
+## Follow-ups
+
+- GitHub has no API to set the social preview image. `PUT /repos/Avivhdr/beacon/social-preview` returned 404. Upload `web/og.png` by hand in the repository settings. The live card is still GitHub's default image.
+- Homebrew warns that `depends_on macos: ">= :sonoma"` is deprecated. The cask still installs. A later edit can use `depends_on macos: :sonoma`.
+- Store the exported Sparkle private key in Bitwarden, then delete the export from this Mac.
+
+The rest of this file is the running log. Each phase lists what changed, how it was checked, and any decision made on the way. The plan is [LAUNCH_PLAN.md](LAUNCH_PLAN.md).
 
 ## Phase 0: bootstrap this Mac
 
@@ -293,11 +332,11 @@ Check for Updates, user-initiated, against the live feed: Sparkle opened a 260 b
 
 The local cask still has the Phase 6 disk-image hash. A real `./release.sh` replaces that hash from the disk image it just built. The public tap is still not created.
 
-## Phase 11: the repository is public
+## Phase 11: go public and ship 1.0.0
 
 Checked on 2026-10-17.
 
-Aviv approved the public step. The 1.0.0 release is not started.
+Aviv approved the public step, then approved the 1.0.0 release. The Sparkle private-key backup goes in Bitwarden.
 
 ### What changed
 
@@ -305,21 +344,32 @@ Aviv approved the public step. The 1.0.0 release is not started.
 
 Private vulnerability reporting is on.
 
-The public tap is https://github.com/Avivhdr/homebrew-tap. Commit `6cf6626` is "Add the Beacon cask."
+The public tap is https://github.com/Avivhdr/homebrew-tap. The first tap commit is `6cf6626`, "Add the Beacon cask."
+
+`./release.sh` from `/Users/avivhadar/repos/beacon` published 1.0.0. `MARKETING_VERSION` stayed `1.0.0`. The script moved `CURRENT_PROJECT_VERSION` from 1 to 2. Commit `8a67460` is `release: v1.0.0 (build 2)`. The tap commit `70c3238` is `beacon 1.0.0`.
+
+The first notary submit lost the network (`NSURLErrorDomain` -1005) before it returned a submission id. Nothing was published. `project.yml` was restored to build 1, and the script was run again.
 
 ### Checks
 
 - `gh repo view`: visibility PUBLIC. The repository is not private. The homepage is `https://beacon-for-github.vercel.app`.
 - An anonymous `curl` of https://github.com/Avivhdr/beacon returned HTTP 200.
-- The anonymous API reports visibility public, private false, and the same homepage.
 - While the repository was private, `PUT /repos/Avivhdr/beacon/private-vulnerability-reporting` returned 404. After it was public, the same call succeeded. `GET` returns `{"enabled":true}`.
-- The tap is public. The description is "Homebrew cask for Beacon". The default branch is main. The root commit is `6cf6626`.
-- `Casks/beacon.rb` is blob `ccf6503f09781ea8bd5dbcbace9fcff2de19e685`. The version is 1.0.0. The sha256 is still the Phase 6 hash `e405aa3320b4ba00b6a431179a180aa0869f6a05933c1f96fca259544514a650`. A real `./release.sh` replaces that hash from the disk image it builds.
-- The tap checkout is `6cf6626` in this worktree at `dist/homebrew-tap`, and at `/Users/avivhadar/repos/beacon/dist/homebrew-tap`. `release.sh` can push the tap only from `/Users/avivhadar/repos/beacon`.
-- `brew install --cask avivhdr/tap/beacon` cannot download the disk image yet. The v1.0.0 release does not exist.
-- The live feed is still the empty channel. No GitHub Release exists.
-- The homepage was already the Vercel site. The social preview image is not uploaded. That step comes after the release.
+- App submission `437a84fb-0158-4b8a-907b-a95cf30dd7a2`: stapled. `spctl` says Notarized Developer ID.
+- Disk image submission `cf25af79-c2ae-4eab-ae2f-147a2170e00a`: stapled. `spctl` says Notarized Developer ID.
+- The live feed shows `sparkle:shortVersionString` 1.0.0 and `sparkle:version` 2. The enclosure length is 2601802. `curl` of the enclosure returned HTTP 200 and 2601802 bytes. `releases/latest/download/Beacon.dmg` returned HTTP 200.
+- The downloaded disk image sha256 is `26d2db1b5a5fd86eb29db567266a2f75aa981d4821640b1c351ae9aecbc42afc`. That matches the cask. The image was mounted. The app was copied out and given a quarantine attribute. `spctl -a -vvv --type execute` says Notarized Developer ID. The copy is 1.0.0 (2). `SUFeedURL` and `SUPublicEDKey` are the permanent values.
+- `brew tap avivhdr/tap` and `brew install --cask avivhdr/tap/beacon` installed that build. Homebrew will not replace an app that is already in `/Applications`, so the dry-run app was moved to `/tmp/Beacon-pre-1.0.0-publish.app` first. The installed binary matches the downloaded release. It is 1.0.0 (2) and notarized.
+- The site, in Chrome, shows version 1.0.0. The download link is visible and points at `releases/latest/download/Beacon.dmg`. The brew command on the page is `brew install --cask avivhdr/tap/beacon`.
+- CI for `8a67460` succeeded: run 39039830561. The tag `v1.0.0` also ran CI, run 39039828713, and that succeeded.
+- `PUT /repos/Avivhdr/beacon/social-preview` returned 404. The social preview image is not set. The homepage was already the Vercel site.
 
 ### Decision
 
-`./release.sh` is not run. It publishes a binary and an update feed that every later install trusts. It also needs a place to keep the Sparkle private-key backup. Both wait for Aviv.
+The release is build 2, not build 1. `release.sh` always increments `CURRENT_PROJECT_VERSION`, and the dry run had put the committed number back to 1. `SUFeedURL` and `SUPublicEDKey` were not changed.
+
+## Phase 12: final report
+
+Checked on 2026-10-17.
+
+The summary, the link table, the permanent values, the next-release steps, and the follow-ups are at the top of this file. The phase sections above are the record of how each step was checked.
