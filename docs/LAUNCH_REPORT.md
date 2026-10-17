@@ -35,8 +35,9 @@ On a checkout of `main` at `/Users/avivhadar/repos/beacon`, bump `MARKETING_VERS
 
 ## Follow-ups
 
-- GitHub has no API to set the social preview image. `PUT /repos/Avivhdr/beacon/social-preview` returned 404. Upload `web/og.png` by hand in the repository settings. The live card is still GitHub's default image.
 - Store the exported Sparkle private key in Bitwarden, then delete the export from this Mac.
+
+The social preview is set. GitHub has no API for that image, so it was uploaded in the repository settings. The card is `web/og.png` (1200×630). GitHub asks for 1280×640 for the sharpest card. 1200×630 is above the 640×320 minimum, and the settings page shows this image.
 
 The cask now says `depends_on macos: :sonoma`. That is the same rule as before: macOS Sonoma or newer. Homebrew no longer warns about the old string form.
 
