@@ -36,8 +36,9 @@ On a checkout of `main` at `/Users/avivhadar/repos/beacon`, bump `MARKETING_VERS
 ## Follow-ups
 
 - GitHub has no API to set the social preview image. `PUT /repos/Avivhdr/beacon/social-preview` returned 404. Upload `web/og.png` by hand in the repository settings. The live card is still GitHub's default image.
-- Homebrew warns that `depends_on macos: ">= :sonoma"` is deprecated. The cask still installs. A later edit can use `depends_on macos: :sonoma`.
 - Store the exported Sparkle private key in Bitwarden, then delete the export from this Mac.
+
+The cask now says `depends_on macos: :sonoma`. That is the same rule as before: macOS Sonoma or newer. Homebrew no longer warns about the old string form.
 
 The rest of this file is the running log. Each phase lists what changed, how it was checked, and any decision made on the way. The plan is [LAUNCH_PLAN.md](LAUNCH_PLAN.md).
 
