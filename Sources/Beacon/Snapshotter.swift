@@ -148,6 +148,8 @@ enum Snapshotter {
         let model = AppModel()
         let items = [
             item("m1", .mention, actor: "mona", repo: "frontend", number: 128, title: "Tighten the radar beam on the empty state", snippet: "The trail fades too fast at 16pt. Can you keep one more ring?", at: now.addingTimeInterval(-1_800)),
+            item("m5", .comment, actor: "hubot", repo: "frontend", number: 128, title: "Tighten the radar beam on the empty state", snippet: "Same at 24pt. The outer ring almost disappears.", at: now.addingTimeInterval(-2_700)),
+            item("m6", .reviewed, actor: "octocat", repo: "frontend", number: 128, title: "Tighten the radar beam on the empty state", snippet: "Two small notes inline.", at: now.addingTimeInterval(-5_400)),
             item("m2", .reply, actor: "hubot", repo: "docs", number: 44, title: "Document the three tabs", snippet: "Replied in the thread about the Mine layers.", at: now.addingTimeInterval(-7_200)),
             item("m3", .changesRequested, actor: "octocat", owner: "octocat", repo: "hello-world", number: 7, title: "Add a copy button for the brew command", snippet: "Please match the hairline weight on the pill.", at: now.addingTimeInterval(-26 * 3_600)),
             item("m4", .approvedWithComment, actor: "mona", repo: "frontend", number: 121, title: "Roll the counters up on open", snippet: "Approved. The ease looks right.", at: now.addingTimeInterval(-50 * 3_600), read: true),

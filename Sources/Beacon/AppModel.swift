@@ -48,6 +48,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var collapsedRepos = Set(UserDefaults.standard.stringArray(forKey: "collapsedRepos") ?? []) {
         didSet { UserDefaults.standard.set(collapsedRepos.sorted(), forKey: "collapsedRepos") }
     }
+    /// Pull requests folded in the Unread tab, by `PRRef.key`. Dropped once the feed no longer has them.
+    @Published private(set) var collapsedPRs = Set(UserDefaults.standard.stringArray(forKey: "collapsedPRs") ?? []) {
+        didSet { UserDefaults.standard.set(collapsedPRs.sorted(), forKey: "collapsedPRs") }
+    }
 
     private let engine = FeedEngine()
     private var loop: Task<Void, Never>?
@@ -102,6 +106,7 @@ final class AppModel: ObservableObject {
         do {
             let snapshot = try await engine.refresh()
             items = engine.state.items
+            forgetGoneCollapsedPRs()
             allCategories = snapshot.categories
             forgetGoneHiddenPRs(errors: snapshot.errors)
             applyHiddenPRs()
@@ -142,6 +147,25 @@ final class AppModel: ObservableObject {
 
     func toggleCollapsed(_ repo: String) {
         if collapsedRepos.contains(repo) { collapsedRepos.remove(repo) } else { collapsedRepos.insert(repo) }
+    }
+
+    func toggleCollapsed(_ thread: PRThread) {
+        if collapsedPRs.contains(thread.id) { collapsedPRs.remove(thread.id) } else { collapsedPRs.insert(thread.id) }
+    }
+
+    private func forgetGoneCollapsedPRs() {
+        let listed = Set(items.map(\.pr.key))
+        let kept = collapsedPRs.filter { listed.contains($0) }
+        if kept.count != collapsedPRs.count { collapsedPRs = kept }
+    }
+
+    /// Opens the pull request itself. Its items stay unread, since opening one comment doesn't read the rest.
+    func open(_ thread: PRThread) {
+        if let url = thread.pr.webURL { NSWorkspace.shared.open(url) }
+    }
+
+    func markRead(_ thread: PRThread) {
+        markRead(Set(thread.items.filter { !$0.read }.map(\.id)))
     }
 
     /// Marks one item read without opening it.

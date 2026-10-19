@@ -21,6 +21,7 @@ public struct PRRef: Hashable, Codable {
 
     public var repo: String { "\(owner)/\(name)" }
     public var key: String { "\(repo)#\(number)" }
+    public var webURL: URL? { URL(string: "https://github.com/\(repo)/pull/\(number)") }
 }
 
 public struct Author: Hashable {
@@ -146,6 +147,29 @@ public struct FeedItem: Codable, Identifiable, Hashable {
     }
 
     public var isClosed: Bool { prState != "OPEN" }
+}
+
+/// Feed items on one pull request, newest first.
+public struct PRThread: Identifiable, Hashable {
+    public var pr: PRRef
+    public var items: [FeedItem]
+
+    public var id: String { pr.key }
+    /// The newest item has the latest title and state.
+    public var title: String { items[0].prTitle }
+    public var prState: String { items[0].prState }
+    public var isClosed: Bool { items[0].isClosed }
+    public var latest: Date { items[0].createdAt }
+    public var unreadCount: Int { items.filter { !$0.read }.count }
+
+    /// One thread per pull request, the one with the newest activity first.
+    public static func group(_ items: [FeedItem]) -> [PRThread] {
+        let byPR = Dictionary(grouping: items, by: \.pr)
+        return byPR.map { pr, items in
+            PRThread(pr: pr, items: items.sorted { $0.createdAt > $1.createdAt })
+        }
+        .sorted { $0.latest != $1.latest ? $0.latest > $1.latest : $0.id < $1.id }
+    }
 }
 
 public struct PRLabel: Hashable {

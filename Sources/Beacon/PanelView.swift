@@ -373,18 +373,37 @@ private struct NotificationsTab: View {
     }
 
     private var list: some View {
-        let groups = DayGroup.group(shown)
-        let offsets = groups.indices.map { i in groups[..<i].reduce(0) { $0 + $1.items.count } }
+        let days = DayGroup.group(PRThread.group(shown))
+        // Running position, so the entrance cascades through headers and rows in reading order.
+        let starts = days.indices.map { i in
+            days[..<i].reduce(0) { $0 + 1 + $1.threads.reduce(0) { $0 + 1 + $1.items.count } }
+        }
         return ScrollView {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
-                ForEach(Array(groups.enumerated()), id: \.element.id) { groupIndex, day in
+                ForEach(Array(days.enumerated()), id: \.element.id) { dayIndex, day in
                     Section {
-                        ForEach(Array(day.items.enumerated()), id: \.element.id) { index, item in
-                            FeedRow(item: item, open: { model.open(item) }, dismiss: {
-                                withAnimation(reduceMotion ? nil : .arrive(0.4)) { model.markRead(item) }
-                            })
-                            .staggeredReveal(offsets[groupIndex] + index)
-                            .transition(.asymmetric(insertion: .opacity, removal: .opacity.combined(with: .offset(x: -40))))
+                        ForEach(Array(day.threads.enumerated()), id: \.element.id) { threadIndex, thread in
+                            let first = starts[dayIndex] + 1 + day.threads[..<threadIndex].reduce(0) { $0 + 1 + $1.items.count }
+                            let collapsed = model.collapsedPRs.contains(thread.id)
+                            ThreadHeader(
+                                thread: thread,
+                                collapsed: collapsed,
+                                divider: threadIndex > 0,
+                                toggle: { withAnimation(reduceMotion ? nil : .arrive(0.34)) { model.toggleCollapsed(thread) } },
+                                open: { model.open(thread) },
+                                markRead: { withAnimation(reduceMotion ? nil : .arrive(0.4)) { model.markRead(thread) } }
+                            )
+                            .staggeredReveal(first)
+                            .transition(.opacity)
+                            if !collapsed {
+                                ForEach(Array(thread.items.enumerated()), id: \.element.id) { index, item in
+                                    FeedRow(item: item, open: { model.open(item) }, dismiss: {
+                                        withAnimation(reduceMotion ? nil : .arrive(0.4)) { model.markRead(item) }
+                                    })
+                                    .staggeredReveal(first + 1 + index)
+                                    .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: -6)), removal: .opacity.combined(with: .offset(x: -40))))
+                                }
+                            }
                         }
                     } header: {
                         RuledHeader(title: day.title)
@@ -406,10 +425,10 @@ private struct NotificationsTab: View {
     }
 }
 
-/// Feed items that share a calendar day, newest day first.
+/// Pull request threads filed under the day of their newest item, newest day first.
 private struct DayGroup: Identifiable {
     let day: Date
-    let items: [FeedItem]
+    let threads: [PRThread]
     var id: Date { day }
 
     var title: String {
@@ -422,38 +441,142 @@ private struct DayGroup: Identifiable {
         return day.formatted(.dateTime.month(.abbreviated).day())
     }
 
-    static func group(_ items: [FeedItem]) -> [DayGroup] {
+    /// Keeps the order of `threads` inside each day.
+    static func group(_ threads: [PRThread]) -> [DayGroup] {
         let calendar = Calendar.current
-        let byDay = Dictionary(grouping: items) { calendar.startOfDay(for: $0.createdAt) }
-        return byDay.keys.sorted(by: >).map { day in
-            DayGroup(day: day, items: byDay[day]!.sorted { $0.createdAt > $1.createdAt })
-        }
+        let byDay = Dictionary(grouping: threads) { calendar.startOfDay(for: $0.latest) }
+        return byDay.keys.sorted(by: >).map { DayGroup(day: $0, threads: byDay[$0]!) }
     }
 }
 
+private func kindLook(_ item: FeedItem) -> (symbol: String, label: String, color: Color) {
+    switch item.kind {
+    case .mention: return ("at", "Mention", Palette.amber)
+    case .teamMention: return ("person.2.fill", "@\(item.team ?? "team")", Palette.amber)
+    case .reply: return ("arrowshape.turn.up.left.fill", "Reply", Palette.steel)
+    case .changesRequested: return ("exclamationmark", "Changes requested", Palette.red)
+    case .approvedWithComment: return ("checkmark", "Approved", Palette.green)
+    case .reviewed: return ("eye.fill", "Review", Palette.steel)
+    case .comment: return ("text.bubble.fill", "Comment", Palette.steel)
+    }
+}
+
+/// A pull request in the Unread tab. Click to fold its items away; folded, it keeps one dot per item.
+private struct ThreadHeader: View {
+    let thread: PRThread
+    let collapsed: Bool
+    /// A hairline above every thread but the first of the day.
+    let divider: Bool
+    let toggle: () -> Void
+    let open: () -> Void
+    let markRead: () -> Void
+    @State private var hovering = false
+
+    private static let maxDots = 12
+
+    private var unread: Int { thread.unreadCount }
+
+    var body: some View {
+        Button(action: toggle) {
+            HStack(alignment: .top, spacing: 9) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(hovering ? Palette.amber : Palette.dim)
+                    .rotationEffect(.degrees(collapsed ? 0 : 90))
+                    .frame(width: 12, height: 18)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(thread.title)
+                        .font(.system(size: 13.5, weight: .medium))
+                        .foregroundStyle(unread == 0 || thread.isClosed ? Palette.dim : Palette.text)
+                        .strikethrough(thread.isClosed, color: Palette.faint)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(verbatim: "\(thread.pr.name)#\(thread.pr.number)" + (thread.isClosed ? " · \(thread.prState.lowercased())" : ""))
+                        .font(.system(size: 10.5, design: .monospaced))
+                        .foregroundStyle(Palette.faint)
+                }
+                Spacer(minLength: 8)
+                HStack(spacing: 8) {
+                    if collapsed {
+                        HStack(spacing: 4) {
+                            ForEach(thread.items.prefix(Self.maxDots)) { item in
+                                Circle()
+                                    .fill(item.read ? Palette.faint : kindLook(item).color)
+                                    .frame(width: 5, height: 5)
+                            }
+                        }
+                        .transition(.opacity)
+                    }
+                    // Unread items in amber; once they're all read, the total in grey.
+                    Text(verbatim: "\(unread > 0 ? unread : thread.items.count)")
+                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(unread > 0 ? Palette.amber : Palette.faint)
+                        .frame(minWidth: 14, alignment: .trailing)
+                        .contentTransition(.numericText(value: Double(unread)))
+                }
+                .frame(height: 18)
+                .opacity(hovering ? 0 : 1)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 12)
+            .padding(.bottom, collapsed ? 12 : 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(hovering ? 0.035 : 0))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .top) {
+            if divider {
+                Rectangle().fill(Palette.hairline).frame(height: 1).padding(.horizontal, 18)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if hovering {
+                HStack(spacing: 2) {
+                    Button(action: open) { Image(systemName: "arrow.up.right") }
+                        .buttonStyle(ChromeButton())
+                        .help("Open the pull request")
+                    if unread > 0 {
+                        Button(action: markRead) { Image(systemName: "checkmark") }
+                            .buttonStyle(ChromeButton())
+                            .help("Mark \(unread == 1 ? "it" : "all \(unread)") read")
+                    }
+                }
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Palette.raised))
+                .padding(.top, 8)
+                .padding(.trailing, 10)
+                .transition(.opacity.combined(with: .scale(scale: 0.8)))
+            }
+        }
+        .onHover { over in withAnimation(.arrive(0.2)) { hovering = over } }
+        .contextMenu {
+            Button("Open Pull Request", action: open)
+            if unread > 0 { Button("Mark All Read", action: markRead) }
+        }
+        .help(thread.pr.repo)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(thread.title), \(thread.pr.name) \(thread.pr.number), \(unread) unread")
+        .accessibilityValue(collapsed ? "collapsed" : "expanded")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(.default, toggle)
+        .accessibilityAction(named: "Open pull request", open)
+        .accessibilityAction(named: "Mark all read", markRead)
+    }
+}
+
+/// One item under its pull request. The thread header carries the title, so the row is who, what, and when.
 private struct FeedRow: View {
     let item: FeedItem
     let open: () -> Void
     let dismiss: () -> Void
     @State private var hovering = false
 
-    private var kind: (symbol: String, label: String, color: Color) {
-        switch item.kind {
-        case .mention: return ("at", "Mention", Palette.amber)
-        case .teamMention: return ("person.2.fill", "@\(item.team ?? "team")", Palette.amber)
-        case .reply: return ("arrowshape.turn.up.left.fill", "Reply", Palette.steel)
-        case .changesRequested: return ("exclamationmark", "Changes requested", Palette.red)
-        case .approvedWithComment: return ("checkmark", "Approved", Palette.green)
-        case .reviewed: return ("eye.fill", "Review", Palette.steel)
-        case .comment: return ("text.bubble.fill", "Comment", Palette.steel)
-        }
-    }
-
     var body: some View {
+        let kind = kindLook(item)
         Button(action: open) {
-            HStack(alignment: .top, spacing: 14) {
-                Lamp(symbol: kind.symbol, color: kind.color, lit: !item.read)
-                VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .top, spacing: 12) {
+                Lamp(symbol: kind.symbol, color: kind.color, lit: !item.read, size: 22)
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
                         Text(kind.label)
                             .readout(size: 9, tracking: 1.2)
@@ -467,28 +590,20 @@ private struct FeedRow: View {
                         Age(date: item.createdAt, stale: false)
                             .opacity(hovering && !item.read ? 0 : 1)
                     }
-                    .frame(height: 16)
-                    Text(item.prTitle)
-                        .font(.system(size: 13.5, weight: .medium))
-                        .foregroundStyle(item.read || item.isClosed ? Palette.dim : Palette.text)
-                        .strikethrough(item.isClosed, color: Palette.faint)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(verbatim: "\(item.pr.name)#\(item.pr.number)" + (item.isClosed ? " · \(item.prState.lowercased())" : ""))
-                        .font(.system(size: 10.5, design: .monospaced))
-                        .foregroundStyle(Palette.faint)
+                    .frame(height: 22)
                     if !item.snippet.isEmpty {
                         Text(item.snippet)
                             .font(.system(size: 12))
-                            .foregroundStyle(Palette.dim)
+                            .foregroundStyle(item.read ? Palette.faint : Palette.dim)
                             .lineLimit(2)
                             .lineSpacing(1.5)
-                            .padding(.top, 3)
                     }
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 13)
+            // Indented under the thread header, lamps lined up with its title.
+            .padding(.leading, 39)
+            .padding(.trailing, 18)
+            .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RowHighlight(on: hovering))
             .contentShape(Rectangle())
@@ -500,7 +615,7 @@ private struct FeedRow: View {
                     .buttonStyle(ChromeButton())
                     .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Palette.raised))
                     .help("Mark read without opening")
-                    .padding(.top, 8)
+                    .padding(.top, 5)
                     .padding(.trailing, 10)
                     .transition(.opacity.combined(with: .scale(scale: 0.8)))
             }
