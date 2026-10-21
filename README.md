@@ -8,7 +8,7 @@ Beacon is a macOS menu bar app for GitHub. It shows three things:
 - Pull requests waiting for your review.
 - Your own open pull requests.
 
-The menu bar shows two counts, unread and reviews. Your own pull requests stay in the panel, on the Mine tab. Inside a group, pull requests sit under their repository. Click a repository to fold it. It stays folded until you click it again.
+The menu bar shows two counts, unread and reviews. Your own pull requests stay in the panel, on the Mine tab. Inside a group, pull requests sit under their repository. Click a repository to fold it. It stays folded until you click it again. The small icon at the end of a group's header folds every repository in that group, or unfolds them all once they're all folded.
 
 With nothing unread and nothing to review, the icon is the GitHub mark.
 
@@ -74,9 +74,9 @@ Beacon polls `/notifications?participating=true` for pull requests with new acti
 | Review requests | no, they are in the review count |
 | Bots, `ignoredUsers`, your own activity | no |
 
-Items on the same pull request sit together under its title, and each day lists the pull requests with activity that day, newest first. A pull request with activity across several days shows up under the day of its newest item. Click a pull request's title to fold it. Folded, it keeps one dot per item and its unread count, and it stays folded until you click it again. Hover the title for buttons that open the pull request or mark all of its items read.
+Items on the same pull request sit together under its title, and each day lists the pull requests with activity that day, newest first. A pull request with activity across several days shows up under the day of its newest item. Click a pull request's title to fold it. Folded, it keeps one dot per item and its unread count, and it stays folded until you click it again. Hover the title for buttons that copy its link, open the pull request, or mark all of its items read.
 
-Opening an item marks it read. The check button on hover marks it read without opening it. When a pull request has no unread items left, Beacon marks that GitHub notification thread read too. Anything you read on github.com is marked read here.
+Opening an item marks it read. The check button on hover marks it read without opening it. The link button next to it copies the link to that comment or review. Pull requests in the Reviews and Mine tabs have the same link button on hover, and every row has "Copy Link" in its right-click menu. When a pull request has no unread items left, Beacon marks that GitHub notification thread read too. Anything you read on github.com is marked read here.
 
 ## Config
 
