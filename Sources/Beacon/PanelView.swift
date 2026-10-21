@@ -532,7 +532,8 @@ private struct ThreadHeader: View {
         }
         .overlay(alignment: .topTrailing) {
             if hovering {
-                HStack(spacing: 2) {
+                HoverControls {
+                    if let url = thread.pr.webURL { CopyLinkButton(url: url.absoluteString) }
                     Button(action: open) { Image(systemName: "arrow.up.right") }
                         .buttonStyle(ChromeButton())
                         .help("Open the pull request")
@@ -542,15 +543,14 @@ private struct ThreadHeader: View {
                             .help("Mark \(unread == 1 ? "it" : "all \(unread)") read")
                     }
                 }
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Palette.raised))
                 .padding(.top, 8)
                 .padding(.trailing, 10)
-                .transition(.opacity.combined(with: .scale(scale: 0.8)))
             }
         }
         .onHover { over in withAnimation(.arrive(0.2)) { hovering = over } }
         .contextMenu {
             Button("Open Pull Request", action: open)
+            if let url = thread.pr.webURL { Button("Copy Link") { copyLink(url.absoluteString) } }
             if unread > 0 { Button("Mark All Read", action: markRead) }
         }
         .help(thread.pr.repo)
@@ -588,7 +588,7 @@ private struct FeedRow: View {
                             .lineLimit(1)
                         Spacer(minLength: 4)
                         Age(date: item.createdAt, stale: false)
-                            .opacity(hovering && !item.read ? 0 : 1)
+                            .opacity(hovering ? 0 : 1)
                     }
                     .frame(height: 22)
                     if !item.snippet.isEmpty {
@@ -610,19 +610,24 @@ private struct FeedRow: View {
         }
         .buttonStyle(PressableRow())
         .overlay(alignment: .topTrailing) {
-            if hovering && !item.read {
-                Button(action: dismiss) { Image(systemName: "checkmark") }
-                    .buttonStyle(ChromeButton())
-                    .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Palette.raised))
-                    .help("Mark read without opening")
-                    .padding(.top, 5)
-                    .padding(.trailing, 10)
-                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+            if hovering {
+                HoverControls {
+                    CopyLinkButton(url: item.url)
+                    if !item.read {
+                        Button(action: dismiss) { Image(systemName: "checkmark") }
+                            .buttonStyle(ChromeButton())
+                            .help("Mark read without opening")
+                    }
+                }
+                .padding(.top, 5)
+                .padding(.trailing, 10)
             }
         }
         .onHover { over in withAnimation(.arrive(0.2)) { hovering = over } }
+        .contextMenu { Button("Copy Link") { copyLink(item.url) } }
         .accessibilityElement(children: .combine)
         .accessibilityAction(named: "Mark read", dismiss)
+        .accessibilityAction(named: "Copy link") { copyLink(item.url) }
     }
 }
 
@@ -784,19 +789,25 @@ private struct ReviewRow: View {
         .opacity(pr.isSkipped ? 0.45 : 1)
         .overlay(alignment: .topTrailing) {
             if hovering {
-                Menu { hideButtons } label: { Image(systemName: "eye.slash") }
-                    .menuStyle(.button)
-                    .buttonStyle(ChromeButton())
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                    .help("Hide this PR or its repo")
-                    .padding(.top, 6)
-                    .padding(.trailing, 10)
-                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                HoverControls {
+                    CopyLinkButton(url: pr.url)
+                    Menu { hideButtons } label: { Image(systemName: "eye.slash") }
+                        .menuStyle(.button)
+                        .buttonStyle(ChromeButton())
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                        .help("Hide this PR or its repo")
+                }
+                .padding(.top, 6)
+                .padding(.trailing, 10)
             }
         }
         .onHover { over in withAnimation(.arrive(0.2)) { hovering = over } }
-        .contextMenu { hideButtons }
+        .contextMenu {
+            Button("Copy Link") { copyLink(pr.url) }
+            Divider()
+            hideButtons
+        }
     }
 }
 
@@ -891,7 +902,18 @@ private struct MineTab: View {
                                 }
                             }
                         } header: {
-                            RuledHeader(title: entry.group.name, count: entry.group.count)
+                            RuledHeader(title: entry.group.name, count: entry.group.count) {
+                                if !entry.buckets.isEmpty {
+                                    let repos = entry.buckets.map(\.repo)
+                                    // Any open repo means the click folds; only a fully folded group unfolds.
+                                    let allCollapsed = repos.allSatisfy(model.collapsedRepos.contains)
+                                    FoldAllButton(allCollapsed: allCollapsed) {
+                                        withAnimation(reduceMotion ? nil : .arrive(0.34)) {
+                                            model.setCollapsed(repos, !allCollapsed)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -956,6 +978,27 @@ private struct RepoHeader: View {
     }
 }
 
+/// Folds or unfolds every repo in a Mine group. Faint and small so it reads as part of the header rule.
+private struct FoldAllButton: View {
+    let allCollapsed: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: allCollapsed ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(hovering ? Palette.amber : Palette.faint)
+                .frame(width: 18, height: 14)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { over in withAnimation(.arrive(0.2)) { hovering = over } }
+        .help(allCollapsed ? "Expand all repos" : "Collapse all repos")
+        .accessibilityLabel(allCollapsed ? "Expand all repos" : "Collapse all repos")
+    }
+}
+
 private func ciColor(_ state: String?) -> Color {
     switch state {
     case "SUCCESS": return Palette.green
@@ -1001,6 +1044,7 @@ private struct MineRow: View {
                 Spacer(minLength: 8)
                 Age(date: pr.createdAt, stale: false)
                     .padding(.top, 3)
+                    .opacity(hovering ? 0 : 1)
             }
             // Indented under the repo header.
             .padding(.leading, 39)
@@ -1011,7 +1055,15 @@ private struct MineRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableRow())
+        .overlay(alignment: .topTrailing) {
+            if hovering {
+                HoverControls { CopyLinkButton(url: pr.url) }
+                    .padding(.top, 5)
+                    .padding(.trailing, 10)
+            }
+        }
         .onHover { over in withAnimation(.arrive(0.2)) { hovering = over } }
+        .contextMenu { Button("Copy Link") { copyLink(pr.url) } }
         .help(pr.repo)
     }
 }
@@ -1053,6 +1105,59 @@ private struct RowHighlight: View {
                 .padding(.leading, 6)
                 .opacity(on ? 1 : 0)
         }
+    }
+}
+
+/// Hover control that puts a GitHub link on the clipboard. The icon turns into an amber check for a moment
+/// so the copy registers without a toast.
+private struct CopyLinkButton: View {
+    let url: String
+    @State private var copied = false
+    @State private var copies = 0
+
+    var body: some View {
+        Button {
+            copyLink(url)
+            copies += 1
+            let copy = copies
+            withAnimation(.arrive(0.2)) { copied = true }
+            Task {
+                try? await Task.sleep(for: .seconds(1.4))
+                // A second click restarts the clock instead of being cut short by the first.
+                guard copy == copies else { return }
+                withAnimation(.leave()) { copied = false }
+            }
+        } label: {
+            // Stacked rather than swapped so the link glyph keeps ChromeButton's hover color.
+            ZStack {
+                Image(systemName: "link")
+                    .opacity(copied ? 0 : 1)
+                Image(systemName: "checkmark")
+                    .foregroundStyle(Palette.amber)
+                    .opacity(copied ? 1 : 0)
+                    .scaleEffect(copied ? 1 : 0.6)
+            }
+        }
+        .buttonStyle(ChromeButton())
+        .help(copied ? "Copied" : "Copy link")
+        .accessibilityLabel("Copy link")
+    }
+}
+
+private func copyLink(_ url: String) {
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(url, forType: .string)
+}
+
+/// The cluster of hover controls pinned to a row's top-trailing corner, on a raised backing so they sit
+/// cleanly over the row text.
+private struct HoverControls<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        HStack(spacing: 2) { content() }
+            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Palette.raised))
+            .transition(.opacity.combined(with: .scale(scale: 0.8)))
     }
 }
 

@@ -149,6 +149,10 @@ final class AppModel: ObservableObject {
         if collapsedRepos.contains(repo) { collapsedRepos.remove(repo) } else { collapsedRepos.insert(repo) }
     }
 
+    func setCollapsed(_ repos: [String], _ collapsed: Bool) {
+        if collapsed { collapsedRepos.formUnion(repos) } else { collapsedRepos.subtract(repos) }
+    }
+
     func toggleCollapsed(_ thread: PRThread) {
         if collapsedPRs.contains(thread.id) { collapsedPRs.remove(thread.id) } else { collapsedPRs.insert(thread.id) }
     }
