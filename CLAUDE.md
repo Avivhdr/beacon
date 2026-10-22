@@ -5,7 +5,7 @@ A native macOS menu bar app (SwiftUI in an AppKit shell) that shows what on GitH
 ## Layout
 
 - `Sources/Core`: models, GitHub client (REST and GraphQL), the feed classifier, config and state. No UI. Logic changes here get tests in `Tests/CoreTests` (`swift test`).
-- `Sources/Beacon`: the app. `AppDelegate` (menu bar item, floating panel, status icon), `Updater` (Sparkle), `AppModel` (state the views observe), `PanelView` (the three tabs), `FiltersView` (review category editor), `Theme` (palette, readout type, lamps, motion). The Xcode project comes from `project.yml` (`make build`). `Package.swift` stays for `Core` so `swift test` stays fast.
+- `Sources/Beacon`: the app. `AppDelegate` (menu bar item, floating panel, status icon), `Updater` (Sparkle), `AppModel` (state the views observe), `PanelView` (Unread, To review, and Mine; Merged sits under the Mine count and has no count), `FiltersView` (review category editor), `Theme` (palette, readout type, lamps, motion). The Xcode project comes from `project.yml` (`make build`). `Package.swift` stays for `Core` so `swift test` stays fast.
 - `scripts/`: build and replay helpers. `README.md` is the user-facing reference for behavior and config keys.
 
 ## Design

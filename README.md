@@ -2,23 +2,28 @@
 
 [![CI](https://github.com/Avivhdr/beacon/actions/workflows/ci.yml/badge.svg)](https://github.com/Avivhdr/beacon/actions/workflows/ci.yml)
 
-Beacon is a macOS menu bar app for GitHub. It shows three things:
+Beacon is a macOS menu bar app for GitHub. It shows four things:
 
 - Unread activity that needs you.
 - Pull requests waiting for your review.
 - Your own open pull requests.
+- Pull requests you have already merged.
 
-The menu bar shows two counts, unread and reviews. Your own pull requests stay in the panel, on the Mine tab. Inside a group, pull requests sit under their repository. Click a repository to fold it. It stays folded until you click it again. The small icon at the end of a group's header folds every repository in that group, or unfolds them all once they're all folded.
+The menu bar shows two counts, unread and reviews. Your own open pull requests stay in the panel, on the Mine tab. Inside a group, pull requests sit under their repository. Click a repository to fold it. It stays folded until you click it again. The small icon at the end of a group's header folds every repository in that group, or unfolds them all once they're all folded.
+
+Merged sits under the Mine count. It has no count of its own, and it is not in the menu bar. Latest lists every merged pull request, newest merge first. By repo groups them by repository, and the repository with the newest merge comes first. Inside a repository, the newest merge is first. Beacon remembers which layout you picked. Click a repository to fold it. It stays folded until you click it again. The list is the 100 most recently updated merged pull requests. Beacon then sorts that list by the date each one was merged.
 
 With nothing unread and nothing to review, the icon is the GitHub mark.
 
 ![The Unread tab, with sample activity from mona, hubot, and octocat](docs/screenshots/unread.png)
 
-The other two tabs:
+The other tabs:
 
 ![The To review tab](docs/screenshots/to-review.png)
 
 ![The Mine tab](docs/screenshots/mine.png)
+
+![The Merged section, newest merge first](docs/screenshots/merged.png)
 
 ## Install
 

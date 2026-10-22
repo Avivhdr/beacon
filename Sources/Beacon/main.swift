@@ -45,6 +45,11 @@ if CommandLine.arguments.contains("--dump") {
                     print("    \(pr.repo)#\(pr.number) [\(pr.isDraft ? "draft " : "")\(pr.reviewDecision ?? "-") ci:\(pr.ciState ?? "-")]  \(pr.title)")
                 }
             }
+            print("merged: \(snapshot.merged.count)")
+            for pr in snapshot.merged {
+                let when = pr.mergedAt?.formatted(date: .abbreviated, time: .shortened) ?? "-"
+                print("    \(when)  \(pr.repo)#\(pr.number)  \(pr.title)")
+            }
             snapshot.errors.forEach { print("error: \($0)") }
         } catch {
             print("error: \(error.localizedDescription)")

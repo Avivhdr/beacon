@@ -14,6 +14,12 @@ enum Snapshotter {
         capture(dir, "unread.png", tab: .notifications, model: populated(now: now))
         capture(dir, "to-review.png", tab: .reviews, model: populated(now: now))
         capture(dir, "mine.png", tab: .mine, model: populated(now: now))
+        let merged = populated(now: now)
+        merged.mergedByRepo = false
+        capture(dir, "merged.png", tab: .merged, model: merged)
+        let mergedRepos = populated(now: now)
+        mergedRepos.mergedByRepo = true
+        capture(dir, "merged-repos.png", tab: .merged, model: mergedRepos)
         capture(dir, "unread-empty.png", tab: .notifications, model: quiet(now: now))
         capture(dir, "unread-all-clear.png", tab: .notifications, model: allRead(now: now))
         capture(dir, "to-review-empty.png", tab: .reviews, model: quiet(now: now))
@@ -170,6 +176,12 @@ enum Snapshotter {
         let minePersonal = [
             pr("p1", repo: "octocat/hello-world", number: 3, title: "Try the snapshot tool on a clean tree", author: "octocat", ci: "EXPECTED", at: now.addingTimeInterval(-90 * 60), decision: "REVIEW_REQUIRED"),
         ]
+        let merged = [
+            pr("g1", repo: "octo-org/frontend", number: 180, title: "Slide the tab mark between sections", author: "octocat", ci: nil, at: now.addingTimeInterval(-5 * 3_600), mergedAt: now.addingTimeInterval(-5 * 3_600)),
+            pr("g2", repo: "octo-org/docs", number: 40, title: "Write the install steps", author: "octocat", ci: nil, at: now.addingTimeInterval(-6 * 3_600), mergedAt: now.addingTimeInterval(-6 * 3_600)),
+            pr("g3", repo: "octo-org/frontend", number: 176, title: "Remember which repositories stay folded", author: "octocat", ci: nil, at: now.addingTimeInterval(-2 * 86_400), mergedAt: now.addingTimeInterval(-2 * 86_400)),
+            pr("g4", repo: "octocat/hello-world", number: 2, title: "First notes for the menu bar icon", author: "octocat", ci: nil, at: now.addingTimeInterval(-9 * 86_400), mergedAt: now.addingTimeInterval(-9 * 86_400)),
+        ]
         model.loadPreview(
             items: items,
             categories: [
@@ -181,6 +193,7 @@ enum Snapshotter {
                 CategoryResult(name: "Work", count: 3, prs: mineWork),
                 CategoryResult(name: "Personal", count: 1, prs: minePersonal),
             ],
+            merged: merged,
             lastUpdated: now.addingTimeInterval(-40)
         )
         return model
@@ -223,7 +236,8 @@ enum Snapshotter {
         at: Date,
         skip: Bool = false,
         draft: Bool = false,
-        decision: String? = nil
+        decision: String? = nil,
+        mergedAt: Date? = nil
     ) -> ReviewPR {
         ReviewPR(
             id: id,
@@ -236,7 +250,8 @@ enum Snapshotter {
             ciState: ci,
             skipLabels: skip ? [PRLabel(name: "DO NOT REVIEW", color: "F4A93B")] : [],
             isDraft: draft,
-            reviewDecision: decision
+            reviewDecision: decision,
+            mergedAt: mergedAt
         )
     }
 }

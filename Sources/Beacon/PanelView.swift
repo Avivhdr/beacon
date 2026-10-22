@@ -11,7 +11,7 @@ struct PanelView: View {
     @Namespace private var indicator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    enum Tab: Int { case notifications, reviews, mine }
+    enum Tab: Int { case notifications, reviews, mine, merged }
 
     init(model: AppModel, updater: Updater, openFilters: @escaping () -> Void) {
         self.model = model
@@ -51,6 +51,9 @@ struct PanelView: View {
                             .transition(slide)
                     case .mine:
                         MineTab(model: model)
+                            .transition(slide)
+                    case .merged:
+                        MergedTab(model: model)
                             .transition(slide)
                     }
                 }
@@ -93,7 +96,7 @@ struct PanelView: View {
         HStack(alignment: .bottom, spacing: 26) {
             readoutTab(.notifications, label: "Unread", count: model.unreadCount, dim: false)
             readoutTab(.reviews, label: "To review", count: model.reviewBadge.count, dim: model.reviewBadge.dim)
-            readoutTab(.mine, label: "Mine", count: model.mineCount, dim: false)
+            mineColumn
             Spacer(minLength: 0)
             if tab == .notifications && model.unreadCount > 0 {
                 Button("Mark all read") {
@@ -110,49 +113,93 @@ struct PanelView: View {
                 MineTelemetry(model: model)
                     .padding(.bottom, 14)
                     .transition(.opacity)
+            } else if tab == .merged {
+                MergedLayoutToggle(model: model)
+                    .padding(.bottom, 14)
+                    .transition(.opacity)
             }
         }
         .padding(.horizontal, 18)
         .padding(.top, 6)
     }
 
+    private func select(_ value: Tab) {
+        direction = value.rawValue > tab.rawValue ? 1 : -1
+        withAnimation(reduceMotion ? nil : .arrive(0.38)) { tab = value }
+    }
+
     private func readoutTab(_ value: Tab, label: String, count: Int, dim: Bool) -> some View {
-        let selected = tab == value
-        return Button {
-            direction = value.rawValue > tab.rawValue ? 1 : -1
-            withAnimation(reduceMotion ? nil : .arrive(0.38)) { tab = value }
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
+        readoutColumn(value, label: label, count: count, dim: dim, under: { Color.clear })
+    }
+
+    /// Mine keeps its count. Merged sits under that count and has none of its own.
+    private var mineColumn: some View {
+        readoutColumn(.mine, label: "Mine", count: model.mineCount, dim: false) {
+            let selected = tab == .merged
+            Button {
+                select(.merged)
+            } label: {
                 HStack(spacing: 6) {
                     Circle()
                         .fill(selected ? Palette.amber : Palette.faint)
                         .frame(width: 5, height: 5)
-                    Text(label)
+                    Text("Merged")
                         .readout(size: 9.5, tracking: 1.6)
                         .foregroundStyle(selected ? Palette.amber : Palette.faint)
                 }
-                Counter(value: count, generation: model.panelOpens)
-                    .font(.system(size: 58, weight: .ultraLight))
-                    .monospacedDigit()
-                    .foregroundStyle(selected ? (dim ? Palette.dim : Palette.text) : Palette.faint)
-                    .padding(.top, -2)
-                    .padding(.bottom, 6)
-                ZStack(alignment: .leading) {
-                    Color.clear.frame(width: 36, height: 2)
-                    if selected {
-                        Capsule()
-                            .fill(Palette.amber)
-                            .frame(width: 36, height: 2)
-                            .matchedGeometryEffect(id: "indicator", in: indicator)
+                .padding(.top, 2)
+                .padding(.bottom, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Merged")
+            .accessibilityAddTraits(selected ? .isSelected : [])
+        }
+    }
+
+    private func readoutColumn<Under: View>(_ value: Tab, label: String, count: Int, dim: Bool, @ViewBuilder under: () -> Under) -> some View {
+        let selected = tab == value
+        // The bar stays under Mine when Merged, which lives in that column, is selected.
+        let marked = selected || (value == .mine && tab == .merged)
+        return VStack(alignment: .leading, spacing: 0) {
+            Button {
+                select(value)
+            } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(selected ? Palette.amber : Palette.faint)
+                            .frame(width: 5, height: 5)
+                        Text(label)
+                            .readout(size: 9.5, tracking: 1.6)
+                            .foregroundStyle(selected ? Palette.amber : Palette.faint)
                     }
+                    Counter(value: count, generation: model.panelOpens)
+                        .font(.system(size: 58, weight: .ultraLight))
+                        .monospacedDigit()
+                        .foregroundStyle(selected ? (dim ? Palette.dim : Palette.text) : Palette.faint)
+                        .padding(.top, -2)
+                        .padding(.bottom, 6)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(count) \(label)")
+            .accessibilityAddTraits(selected ? .isSelected : [])
+            // Same height on every column, so the selection bars stay on one line.
+            under()
+                .frame(height: 22, alignment: .leading)
+            ZStack(alignment: .leading) {
+                Color.clear.frame(width: 36, height: 2)
+                if marked {
+                    Capsule()
+                        .fill(Palette.amber)
+                        .frame(width: 36, height: 2)
+                        .matchedGeometryEffect(id: "indicator", in: indicator)
                 }
             }
-            .fixedSize()
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(count) \(label)")
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .fixedSize()
     }
 }
 
@@ -185,6 +232,36 @@ private struct MineTelemetry: View {
             TelemetryLine(label: "Changes", value: prs.filter { $0.reviewDecision == "CHANGES_REQUESTED" }.count, color: Palette.red)
             TelemetryLine(label: "Failing CI", value: failing.count, color: Palette.red)
         }
+    }
+}
+
+/// Right side of the Merged header: one list by merge date, or one group per repository.
+private struct MergedLayoutToggle: View {
+    @ObservedObject var model: AppModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            choice("Latest", on: !model.mergedByRepo, help: "Newest merge first") {
+                model.setMergedByRepo(false)
+            }
+            choice("By repo", on: model.mergedByRepo, help: "Group by repository, newest merge first") {
+                model.setMergedByRepo(true)
+            }
+        }
+    }
+
+    private func choice(_ title: String, on: Bool, help: String, set: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(reduceMotion ? nil : .arrive(0.34)) { set() }
+        } label: {
+            Text(title)
+                .readout(size: 8.5, tracking: 1.3)
+                .foregroundStyle(on ? Palette.amber : Palette.faint)
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -930,6 +1007,8 @@ private struct RepoHeader: View {
     let prs: [ReviewPR]
     let showOwner: Bool
     let collapsed: Bool
+    var showsChecks = true
+    var unit = "open"
     let toggle: () -> Void
     @State private var hovering = false
 
@@ -948,7 +1027,7 @@ private struct RepoHeader: View {
                     .font(.system(size: 11.5, weight: .medium, design: .monospaced))
                     .lineLimit(1)
                 Spacer(minLength: 8)
-                if collapsed {
+                if collapsed && showsChecks {
                     HStack(spacing: 4) {
                         ForEach(prs) { pr in
                             Circle()
@@ -973,7 +1052,7 @@ private struct RepoHeader: View {
         .buttonStyle(.plain)
         .onHover { over in withAnimation(.arrive(0.2)) { hovering = over } }
         .help(repo)
-        .accessibilityLabel("\(repo), \(prs.count) open")
+        .accessibilityLabel("\(repo), \(prs.count) \(unit)")
         .accessibilityValue(collapsed ? "collapsed" : "expanded")
     }
 }
@@ -1064,6 +1143,123 @@ private struct MineRow: View {
         }
         .onHover { over in withAnimation(.arrive(0.2)) { hovering = over } }
         .contextMenu { Button("Copy Link") { copyLink(pr.url) } }
+        .help(pr.repo)
+    }
+}
+
+// MARK: - Merged
+
+private struct MergedTab: View {
+    @ObservedObject var model: AppModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var showOwner: Bool {
+        Set(model.merged.map { $0.repo.split(separator: "/").first ?? "" }).count > 1
+    }
+
+    private func repoLabel(_ repo: String) -> String {
+        let name = repo.split(separator: "/").last.map(String.init) ?? repo
+        let owner = repo.split(separator: "/").first.map(String.init) ?? ""
+        return showOwner ? "\(owner)/\(name)" : name
+    }
+
+    var body: some View {
+        if model.merged.isEmpty {
+            if model.lastUpdated == nil {
+                AllClear(title: "Scanning", detail: nil, seed: 0, sweeping: true)
+            } else {
+                AllClear(title: "Nothing merged", detail: "Pull requests you merge show up here, newest first.", seed: 0)
+            }
+        } else if model.mergedByRepo {
+            grouped
+        } else {
+            latest
+        }
+    }
+
+    private var latest: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(model.merged.enumerated()), id: \.element.id) { index, pr in
+                    MergedRow(pr: pr, repoLabel: repoLabel(pr.repo)) { model.open(pr) }
+                        .staggeredReveal(index)
+                }
+            }
+            .padding(.bottom, 10)
+        }
+        .scrollIndicators(.never)
+    }
+
+    private var grouped: some View {
+        let groups = MergedPRs.byRepo(model.merged)
+        return ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(groups.enumerated()), id: \.element.id) { groupIndex, group in
+                    let first = groups[..<groupIndex].reduce(0) { $0 + 1 + $1.prs.count }
+                    let collapsed = model.collapsedMergedRepos.contains(group.repo)
+                    RepoHeader(repo: group.repo, prs: group.prs, showOwner: showOwner, collapsed: collapsed, showsChecks: false, unit: "merged") {
+                        withAnimation(reduceMotion ? nil : .arrive(0.34)) { model.toggleCollapsedMerged(group.repo) }
+                    }
+                    .staggeredReveal(first)
+                    if !collapsed {
+                        ForEach(Array(group.prs.enumerated()), id: \.element.id) { index, pr in
+                            MergedRow(pr: pr, repoLabel: nil) { model.open(pr) }
+                                .staggeredReveal(first + 1 + index)
+                                .transition(.opacity.combined(with: .offset(y: -6)))
+                        }
+                    }
+                }
+            }
+            .padding(.bottom, 10)
+        }
+        .scrollIndicators(.never)
+    }
+}
+
+private struct MergedRow: View {
+    let pr: ReviewPR
+    /// Nil when the repository name is already in the group header.
+    var repoLabel: String?
+    let open: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: open) {
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(pr.title)
+                        .font(.system(size: 13.5, weight: .medium))
+                        .foregroundStyle(Palette.text)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 6) {
+                        if let repoLabel {
+                            Text(verbatim: repoLabel)
+                                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                                .foregroundStyle(Palette.dim)
+                                .lineLimit(1)
+                        }
+                        Text(verbatim: "#\(pr.number)")
+                            .font(.system(size: 10.5, design: .monospaced))
+                            .foregroundStyle(Palette.faint)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 8)
+                if let mergedAt = pr.mergedAt {
+                    Age(date: mergedAt, stale: false, note: ", merged")
+                        .padding(.top, 3)
+                }
+            }
+            .padding(.leading, repoLabel == nil ? 39 : 18)
+            .padding(.trailing, 18)
+            .padding(.vertical, 9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RowHighlight(on: hovering))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableRow())
+        .onHover { over in withAnimation(.arrive(0.2)) { hovering = over } }
         .help(pr.repo)
     }
 }
@@ -1203,6 +1399,7 @@ extension RuledHeader where Trailing == EmptyView {
 private struct Age: View {
     let date: Date
     let stale: Bool
+    var note: String? = nil
 
     private var text: String {
         let seconds = max(0, -date.timeIntervalSinceNow)
@@ -1219,7 +1416,7 @@ private struct Age: View {
         Text(verbatim: text)
             .font(.system(size: 10.5, weight: stale ? .semibold : .regular, design: .monospaced))
             .foregroundStyle(stale ? Palette.amber : Palette.faint)
-            .help(date.formatted(date: .abbreviated, time: .shortened) + (stale ? ", waiting longer than your stale limit" : ""))
+            .help(date.formatted(date: .abbreviated, time: .shortened) + (note ?? (stale ? ", waiting longer than your stale limit" : "")))
     }
 }
 

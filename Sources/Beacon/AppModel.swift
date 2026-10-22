@@ -16,6 +16,10 @@ final class AppModel: ObservableObject {
     }
     /// Your own open PRs by `myPRGroups`. Only shown in the panel, never in the menu bar.
     @Published private(set) var mine: [CategoryResult] = []
+    /// Your merged PRs, newest merge first. Only shown in the panel, never in the menu bar.
+    @Published private(set) var merged: [ReviewPR] = []
+    /// True groups the Merged section by repository. False lists every PR, newest merge first.
+    @Published var mergedByRepo = UserDefaults.standard.bool(forKey: "mergedByRepo")
     @Published private(set) var errors: [String] = []
 
     #if DEBUG
@@ -47,6 +51,10 @@ final class AppModel: ObservableObject {
     /// Repos folded in the Mine tab. Remembered across launches.
     @Published private(set) var collapsedRepos = Set(UserDefaults.standard.stringArray(forKey: "collapsedRepos") ?? []) {
         didSet { UserDefaults.standard.set(collapsedRepos.sorted(), forKey: "collapsedRepos") }
+    }
+    /// Repos folded in the Merged section. Separate from the Mine tab.
+    @Published private(set) var collapsedMergedRepos = Set(UserDefaults.standard.stringArray(forKey: "collapsedMergedRepos") ?? []) {
+        didSet { UserDefaults.standard.set(collapsedMergedRepos.sorted(), forKey: "collapsedMergedRepos") }
     }
     /// Pull requests folded in the Unread tab, by `PRRef.key`. Dropped once the feed no longer has them.
     @Published private(set) var collapsedPRs = Set(UserDefaults.standard.stringArray(forKey: "collapsedPRs") ?? []) {
@@ -111,6 +119,7 @@ final class AppModel: ObservableObject {
             forgetGoneHiddenPRs(errors: snapshot.errors)
             applyHiddenPRs()
             mine = snapshot.mine
+            merged = snapshot.merged
             errors = snapshot.errors
             lastUpdated = Date()
             if !snapshot.isFirstRun && config.systemNotifications {
@@ -151,6 +160,20 @@ final class AppModel: ObservableObject {
 
     func setCollapsed(_ repos: [String], _ collapsed: Bool) {
         if collapsed { collapsedRepos.formUnion(repos) } else { collapsedRepos.subtract(repos) }
+    }
+
+    func toggleCollapsedMerged(_ repo: String) {
+        if collapsedMergedRepos.contains(repo) {
+            collapsedMergedRepos.remove(repo)
+        } else {
+            collapsedMergedRepos.insert(repo)
+        }
+    }
+
+    /// Remembers the Merged section layout on this Mac.
+    func setMergedByRepo(_ value: Bool) {
+        mergedByRepo = value
+        UserDefaults.standard.set(value, forKey: "mergedByRepo")
     }
 
     func toggleCollapsed(_ thread: PRThread) {
@@ -295,6 +318,7 @@ final class AppModel: ObservableObject {
         items: [FeedItem],
         categories: [CategoryResult],
         mine: [CategoryResult],
+        merged: [ReviewPR] = [],
         errors: [String] = [],
         lastUpdated: Date? = Date()
     ) {
@@ -302,6 +326,7 @@ final class AppModel: ObservableObject {
         allCategories = categories
         applyHiddenPRs()
         self.mine = mine
+        self.merged = merged
         self.errors = errors
         self.lastUpdated = lastUpdated
         isRefreshing = false
