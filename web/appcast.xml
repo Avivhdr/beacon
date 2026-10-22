@@ -3,24 +3,21 @@
     <channel>
         <title>Beacon</title>
         <item>
-            <title>1.0.0</title>
-            <pubDate>Sat, 17 Oct 2026 16:13:25 +0200</pubDate>
+            <title>1.1.0</title>
+            <pubDate>Thu, 22 Oct 2026 10:58:59 +0200</pubDate>
             <link>https://beacon-for-github.vercel.app</link>
-            <sparkle:version>2</sparkle:version>
-            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <description><![CDATA[<p>
 
-First public release of Beacon.
+- The Unread tab groups each day's items by pull request. A group header folds. On hover, it opens the pull request or marks all of its items read.
+- Each row shows a link button on hover and has "Copy Link" in its right-click menu. Unread items copy the link to the comment or review. Group headers copy the link to the pull request.
+- Each group header in the Mine tab has a control that folds all of its repositories. When all are folded, it unfolds them.
 
-Beacon is a macOS menu bar app. It shows unread GitHub activity, pull requests that need your review, and your own open pull requests.
-
-- The token comes from `gh` and stays on the Mac. Beacon talks only to `api.github.com`.
-- Review filters live in the panel. The config file is `~/.config/beacon/config.json`.
-- Signed updates. The app checks for them once a day.
 </p>
 ]]></description>
-            <enclosure url="https://github.com/Avivhdr/beacon/releases/download/v1.0.0/Beacon-1.0.0.zip" length="2601802" type="application/octet-stream" sparkle:edSignature="JGEgpvp/VQJ6obASmT6T6djN9FPpI12qKSYk689XoxWvpwElq3513hdMHYkHIJLwfDpCftXMiWO6CZeZ1RtXBg=="/>
+            <enclosure url="https://github.com/Avivhdr/beacon/releases/download/v1.1.0/Beacon-1.1.0.zip" length="2677552" type="application/octet-stream" sparkle:edSignature="mhRmstqhxcWW2Kz9aFQORMk614Nr02bsbu7LOy1vUKVTx3N7TK2oyOzy/LFE2H9QHKi3HY2cMhLRPL5eKbcEDw=="/>
         </item>
     </channel>
 </rss>
