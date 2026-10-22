@@ -199,6 +199,8 @@ public struct ReviewPR: Identifiable, Hashable {
     public var isDraft = false
     /// APPROVED, CHANGES_REQUESTED, REVIEW_REQUIRED, or nil when the repo doesn't require reviews.
     public var reviewDecision: String?
+    /// Set for a merged pull request. Nil on an open one.
+    public var mergedAt: Date?
 
     public init(
         id: String,
@@ -212,7 +214,8 @@ public struct ReviewPR: Identifiable, Hashable {
         labels: [PRLabel] = [],
         skipLabels: [PRLabel] = [],
         isDraft: Bool = false,
-        reviewDecision: String? = nil
+        reviewDecision: String? = nil,
+        mergedAt: Date? = nil
     ) {
         self.id = id
         self.repo = repo
@@ -226,6 +229,7 @@ public struct ReviewPR: Identifiable, Hashable {
         self.skipLabels = skipLabels
         self.isDraft = isDraft
         self.reviewDecision = reviewDecision
+        self.mergedAt = mergedAt
     }
 
     public var isSkipped: Bool { !skipLabels.isEmpty }

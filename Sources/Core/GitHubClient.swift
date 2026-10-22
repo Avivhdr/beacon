@@ -221,12 +221,12 @@ public final class GitHubClient {
     }
 
     private static let searchQuery = """
-    query($q: String!) {
-      search(query: $q, type: ISSUE, first: 50) {
+    query($q: String!, $first: Int!) {
+      search(query: $q, type: ISSUE, first: $first) {
         issueCount
         nodes {
           ... on PullRequest {
-            id number title url createdAt isDraft reviewDecision
+            id number title url createdAt mergedAt isDraft reviewDecision
             author { login }
             repository { nameWithOwner }
             labels(first: 20) { nodes { name color } }
@@ -237,7 +237,8 @@ public final class GitHubClient {
     }
     """
 
-    public func searchPullRequests(_ query: String) async throws -> (count: Int, prs: [ReviewPR]) {
+    /// `first` is one search page. GitHub allows at most 100.
+    public func searchPullRequests(_ query: String, first: Int = 50) async throws -> (count: Int, prs: [ReviewPR]) {
         struct Login: Decodable { var login: String }
         struct Repo: Decodable { var nameWithOwner: String }
         struct Label: Decodable { var name: String; var color: String }
@@ -250,6 +251,7 @@ public final class GitHubClient {
             var title: String?
             var url: String?
             var createdAt: Date?
+            var mergedAt: Date?
             var isDraft: Bool?
             var reviewDecision: String?
             var author: Login?
@@ -263,7 +265,8 @@ public final class GitHubClient {
         }
         struct Response: Decodable { var search: Search }
 
-        let search = try await graphql(Self.searchQuery, ["q": query], as: Response.self).search
+        let page = min(max(first, 1), 100)
+        let search = try await graphql(Self.searchQuery, ["q": query, "first": page], as: Response.self).search
         let prs = search.nodes.compactMap { node -> ReviewPR? in
             guard let node, let id = node.id, let number = node.number, let title = node.title,
                   let url = node.url, let createdAt = node.createdAt, let repo = node.repository else { return nil }
@@ -273,7 +276,8 @@ public final class GitHubClient {
                 ciState: node.commits?.nodes.first??.commit.statusCheckRollup?.state,
                 labels: node.labels?.nodes.compactMap { $0.map { PRLabel(name: $0.name, color: $0.color) } } ?? [],
                 isDraft: node.isDraft ?? false,
-                reviewDecision: node.reviewDecision
+                reviewDecision: node.reviewDecision,
+                mergedAt: node.mergedAt
             )
         }
         return (search.issueCount, prs)

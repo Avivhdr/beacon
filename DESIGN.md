@@ -49,7 +49,7 @@ The source of truth for the app is `Sources/Beacon/Theme.swift` (palette, readou
 ## Components
 
 - **Status strip.** A 6pt status dot (green OK, pulsing amber while syncing, red on error) and a mono readout of the last sync. Chrome icon buttons on the right.
-- **Readout tabs.** A small dot plus an uppercase label above a huge numeral. The selected tab is amber, with a 36x2 amber bar under it that slides between tabs.
+- **Readout tabs.** A small dot plus an uppercase label above a huge numeral. The selected tab is amber, with a 36x2 amber bar under it that slides between tabs. Merged is not a queue. Its label sits under the Mine numeral and has no numeral of its own. The bar stays under that column.
 - **Tick ruler.** Ticks every 6pt, a long tick every fifth, 6-13% white. It sits under the header like a scale.
 - **Ruled header.** An uppercase readout, an optional count chip (amber with ink text when above zero), then a hairline to the edge.
 - **Pill button.** Uppercase mono text, a 6pt radius and a hairline border. On hover it turns amber with an 8% amber fill.

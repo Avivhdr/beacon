@@ -7,6 +7,8 @@ public final class FeedEngine {
         public var categories: [CategoryResult]
         /// Your own open PRs, split into `myPRGroups`.
         public var mine: [CategoryResult]
+        /// Your merged PRs, newest merge first. At most one search page.
+        public var merged: [ReviewPR]
         public var errors: [String]
         /// True when this refresh only loaded the lookback window, so nothing should pop up.
         public var isFirstRun: Bool
@@ -46,9 +48,10 @@ public final class FeedEngine {
         let newItems = try await refreshFeed(client: client, errors: &errors)
         let categories = await refreshCategories(client: client, errors: &errors)
         let mine = await refreshMine(client: client, errors: &errors)
+        let merged = await refreshMerged(client: client, errors: &errors)
         state.prune()
         save()
-        return Snapshot(newItems: newItems, categories: categories, mine: mine, errors: errors, isFirstRun: isFirstRun)
+        return Snapshot(newItems: newItems, categories: categories, mine: mine, merged: merged, errors: errors, isFirstRun: isFirstRun)
     }
 
     private func refreshFeed(client: GitHubClient, errors: inout [String]) async throws -> [FeedItem] {
@@ -160,6 +163,21 @@ public final class FeedEngine {
             return PRGroup.assign(prs, to: config.myPRGroups)
         } catch {
             errors.append("My PRs: \(error.localizedDescription)")
+            return []
+        }
+    }
+
+    /// The 100 most recently updated merged PRs, then ordered by merge date.
+    /// GitHub search has no merge-date sort, so the page is `sort:updated-desc` and the order is applied here.
+    private func refreshMerged(client: GitHubClient, errors: inout [String]) async -> [ReviewPR] {
+        do {
+            let (_, prs) = try await client.searchPullRequests(
+                "is:pr is:merged author:@me archived:false sort:updated-desc",
+                first: 100
+            )
+            return MergedPRs.byDate(prs)
+        } catch {
+            errors.append("Merged PRs: \(error.localizedDescription)")
             return []
         }
     }

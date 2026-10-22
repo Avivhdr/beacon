@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Beacon for GitHub</title>
-  <meta name="description" content="Beacon is a macOS menu bar app. It shows unread GitHub activity, pull requests waiting for your review, and your own open pull requests.">
+  <meta name="description" content="Beacon is a macOS menu bar app. It shows unread GitHub activity, pull requests waiting for your review, your own open pull requests, and pull requests you have merged.">
   <meta property="og:title" content="Beacon for GitHub">
   <meta property="og:description" content="Know what on GitHub needs you.">
   <meta property="og:type" content="website">
@@ -45,14 +45,14 @@
         </div>
       </div>
       <figure class="panel-shot">
-        <img src="/screenshots/unread.png" width="920" height="1200" alt="The Beacon panel on the Unread tab. Three items need attention: a mention from mona, a reply from hubot, and changes requested by octocat.">
+        <img src="/screenshots/unread.png" width="920" height="1200" alt="The Beacon panel on the Unread tab. Merged sits under the Mine count and has no count.">
       </figure>
     </section>
 
     <section class="tabs" aria-labelledby="tabs-heading">
-      <h2 id="tabs-heading" class="readout section-label">The three tabs</h2>
+      <h2 id="tabs-heading" class="readout section-label">The four sections</h2>
       <article>
-        <img src="/screenshots/unread.png" width="920" height="1200" alt="Unread tab with a mention, a reply, and a changes-requested review.">
+        <img src="/screenshots/unread.png" width="920" height="1200" alt="Unread tab with mentions, replies, and reviews.">
         <div>
           <h3>Unread</h3>
           <p>Comments, replies, and mentions that need you. Opening one marks it read.</p>
@@ -72,6 +72,13 @@
           <p>Your own open pull requests, in layers. Repositories fold and stay folded. This tab stays out of the menu bar.</p>
         </div>
       </article>
+      <article>
+        <img src="/screenshots/merged.png" width="920" height="1200" alt="Merged section with your merged pull requests, newest first. This section has no count.">
+        <div>
+          <h3>Merged</h3>
+          <p>Pull requests you already merged. The label sits under Mine. Newest first, or grouped by repository. This section has no count.</p>
+        </div>
+      </article>
     </section>
 
     <section class="setup" aria-labelledby="setup-heading">
@@ -87,7 +94,7 @@
         </li>
         <li>
           <h3>Look at the menu bar</h3>
-          <p>Two counts appear: unread, and reviews. Your own pull requests are on the Mine tab.</p>
+          <p>Two counts appear: unread, and reviews. Your own open pull requests are on the Mine tab. Merged sits under that count and has no count of its own.</p>
         </li>
       </ol>
       <p class="note">Review filters live in the panel. The config file is <code>~/.config/beacon/config.json</code>. Beacon reads it again on every poll.</p>
