@@ -73,6 +73,7 @@ struct PanelView: View {
                 .strokeBorder(Palette.hairlineStrong, lineWidth: 1)
         )
         .environment(\.colorScheme, .dark)
+        .environment(\.panelVisible, model.panelVisible)
         .tint(Palette.amber)
     }
 
@@ -315,6 +316,7 @@ private struct StatusStrip: View {
     @ObservedObject var model: AppModel
     @ObservedObject var updater: Updater
     let openFilters: () -> Void
+    @Environment(\.panelVisible) private var panelVisible
 
     private var state: (color: Color, pulsing: Bool) {
         if model.isRefreshing { return (Palette.amber, true) }
@@ -326,7 +328,8 @@ private struct StatusStrip: View {
     var body: some View {
         HStack(spacing: 8) {
             StatusDot(color: state.color, pulsing: state.pulsing)
-            TimelineView(.periodic(from: .now, by: 5)) { context in
+            // Ticks only while the panel is open. Opening it ticks at once, so the age is fresh.
+            TimelineView(.animation(minimumInterval: 5, paused: !panelVisible)) { context in
                 Text(statusText(now: context.date))
                     .readout(size: 9, tracking: 1.3)
                     .foregroundStyle(model.needsSignIn ? Palette.amber : (model.errors.isEmpty ? Palette.faint : Palette.red))
@@ -344,9 +347,10 @@ private struct StatusStrip: View {
                 .help("Install the update")
             }
             Button { Task { await model.refresh() } } label: {
-                Image(systemName: "arrow.clockwise")
-                    .rotationEffect(.degrees(model.isRefreshing ? 360 : 0))
-                    .animation(model.isRefreshing ? .linear(duration: 0.9).repeatForever(autoreverses: false) : .default, value: model.isRefreshing)
+                Looping(active: model.isRefreshing, period: 0.9, framesPerSecond: 60) { cycle in
+                    Image(systemName: "arrow.clockwise")
+                        .rotationEffect(.degrees((cycle ?? 0) * 360))
+                }
             }
             .buttonStyle(ChromeButton())
             .disabled(model.isRefreshing)
@@ -399,18 +403,19 @@ private struct StatusStrip: View {
 private struct StatusDot: View {
     let color: Color
     let pulsing: Bool
-    @State private var phase = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Circle()
-            .fill(color)
-            .frame(width: 6, height: 6)
-            .background(Circle().fill(color.opacity(0.25)).frame(width: 12, height: 12).scaleEffect(pulsing && phase ? 1.4 : 1))
-            .opacity(pulsing && phase ? 0.45 : 1)
-            .animation(pulsing && !reduceMotion ? .easeInOut(duration: 0.7).repeatForever() : .arrive(0.3), value: phase)
-            .onChange(of: pulsing, initial: true) { phase = pulsing }
-            .accessibilityHidden(true)
+        Looping(active: pulsing, period: 1.4) { cycle in
+            let level = pulseLevel(cycle)
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+                .background(Circle().fill(color.opacity(0.25)).frame(width: 12, height: 12).scaleEffect(1 + 0.4 * level))
+                .opacity(1 - 0.55 * level)
+        }
+        // Settles from wherever the pulse was when the sync ends.
+        .animation(.arrive(0.3), value: pulsing)
+        .accessibilityHidden(true)
     }
 }
 
@@ -891,8 +896,6 @@ private struct ReviewRow: View {
 /// CI status as a lamp: shape and color both carry the state.
 private struct CILamp: View {
     let state: String?
-    @State private var phase = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var look: (symbol: String, color: Color, label: String, lit: Bool) {
         switch state {
@@ -903,14 +906,13 @@ private struct CILamp: View {
         }
     }
 
-    private var running: Bool { look.label == "running" && !reduceMotion }
-
     var body: some View {
-        Lamp(symbol: look.symbol, color: look.color, lit: look.lit)
-            .opacity(running && phase ? 0.5 : 1)
-            .animation(running ? .easeInOut(duration: 0.9).repeatForever() : nil, value: phase)
-            .onAppear { if running { phase = true } }
-            .help("CI: \(look.label)")
+        let look = look
+        Looping(active: look.label == "running", period: 1.8) { cycle in
+            Lamp(symbol: look.symbol, color: look.color, lit: look.lit)
+                .opacity(1 - 0.5 * pulseLevel(cycle))
+        }
+        .help("CI: \(look.label)")
     }
 }
 
@@ -1547,58 +1549,77 @@ extension AllClear where Action == EmptyView {
 
 private struct Radar: View {
     var sweeping: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(paused: reduceMotion)) { context in
-            Canvas { gc, size in
-                let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                let radius = min(size.width, size.height) / 2 - 1
-
-                for ring in 1...4 {
-                    let r = radius * CGFloat(ring) / 4
-                    gc.stroke(Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)),
-                              with: .color(.white.opacity(ring == 4 ? 0.12 : 0.06)), lineWidth: 1)
-                }
-                var cross = Path()
-                cross.move(to: CGPoint(x: center.x - radius, y: center.y))
-                cross.addLine(to: CGPoint(x: center.x + radius, y: center.y))
-                cross.move(to: CGPoint(x: center.x, y: center.y - radius))
-                cross.addLine(to: CGPoint(x: center.x, y: center.y + radius))
-                gc.stroke(cross, with: .color(.white.opacity(0.05)), lineWidth: 1)
-
-                // Bearing ticks around the rim.
-                for i in 0..<72 {
-                    let angle = Double(i) / 72 * 2 * .pi
-                    let inner = radius - (i % 6 == 0 ? 7 : 3)
-                    var tick = Path()
-                    tick.move(to: CGPoint(x: center.x + cos(angle) * inner, y: center.y + sin(angle) * inner))
-                    tick.addLine(to: CGPoint(x: center.x + cos(angle) * radius, y: center.y + sin(angle) * radius))
-                    gc.stroke(tick, with: .color(.white.opacity(i % 6 == 0 ? 0.18 : 0.08)), lineWidth: 1)
-                }
-
-                let speed = sweeping ? 1.6 : 0.5
-                let heading = reduceMotion ? -Double.pi / 4 : context.date.timeIntervalSinceReferenceDate * speed
-                // The trail behind the beam, drawn as thin slices that fade with distance.
-                let trail = 1.1, slices = 28
-                for i in 0..<slices {
-                    let from = heading - trail * Double(i + 1) / Double(slices)
-                    let to = heading - trail * Double(i) / Double(slices)
-                    var slice = Path()
-                    slice.move(to: center)
-                    slice.addArc(center: center, radius: radius - 1, startAngle: .radians(from), endAngle: .radians(to), clockwise: false)
-                    slice.closeSubpath()
-                    let fade = 1 - Double(i) / Double(slices)
-                    gc.fill(slice, with: .color(Palette.amber.opacity(0.2 * fade * fade)))
-                }
-                var beam = Path()
-                beam.move(to: center)
-                beam.addLine(to: CGPoint(x: center.x + cos(heading) * radius, y: center.y + sin(heading) * radius))
-                gc.stroke(beam, with: .color(Palette.amber.opacity(0.7)), lineWidth: 1)
-
-                gc.fill(Path(ellipseIn: CGRect(x: center.x - 2.5, y: center.y - 2.5, width: 5, height: 5)), with: .color(Palette.amber))
+        // Scope and beam are each drawn once. Turning the beam only changes its transform.
+        ZStack {
+            RadarScope()
+            Looping(period: 2 * .pi / (sweeping ? 1.6 : 0.5), framesPerSecond: 60) { cycle in
+                RadarBeam()
+                    .rotationEffect(.radians(cycle.map { $0 * 2 * .pi } ?? -.pi / 4))
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// Rings, crosshair and bearing ticks.
+private struct RadarScope: View {
+    var body: some View {
+        Canvas { gc, size in
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let radius = min(size.width, size.height) / 2 - 1
+
+            for ring in 1...4 {
+                let r = radius * CGFloat(ring) / 4
+                gc.stroke(Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)),
+                          with: .color(.white.opacity(ring == 4 ? 0.12 : 0.06)), lineWidth: 1)
+            }
+            var cross = Path()
+            cross.move(to: CGPoint(x: center.x - radius, y: center.y))
+            cross.addLine(to: CGPoint(x: center.x + radius, y: center.y))
+            cross.move(to: CGPoint(x: center.x, y: center.y - radius))
+            cross.addLine(to: CGPoint(x: center.x, y: center.y + radius))
+            gc.stroke(cross, with: .color(.white.opacity(0.05)), lineWidth: 1)
+
+            // Bearing ticks around the rim.
+            for i in 0..<72 {
+                let angle = Double(i) / 72 * 2 * .pi
+                let inner = radius - (i % 6 == 0 ? 7 : 3)
+                var tick = Path()
+                tick.move(to: CGPoint(x: center.x + cos(angle) * inner, y: center.y + sin(angle) * inner))
+                tick.addLine(to: CGPoint(x: center.x + cos(angle) * radius, y: center.y + sin(angle) * radius))
+                gc.stroke(tick, with: .color(.white.opacity(i % 6 == 0 ? 0.18 : 0.08)), lineWidth: 1)
+            }
+        }
+    }
+}
+
+/// The beam pointing along +x, with its trail behind it. `Radar` turns it.
+private struct RadarBeam: View {
+    var body: some View {
+        Canvas { gc, size in
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let radius = min(size.width, size.height) / 2 - 1
+            let heading = 0.0
+            // The trail behind the beam, drawn as thin slices that fade with distance.
+            let trail = 1.1, slices = 28
+            for i in 0..<slices {
+                let from = heading - trail * Double(i + 1) / Double(slices)
+                let to = heading - trail * Double(i) / Double(slices)
+                var slice = Path()
+                slice.move(to: center)
+                slice.addArc(center: center, radius: radius - 1, startAngle: .radians(from), endAngle: .radians(to), clockwise: false)
+                slice.closeSubpath()
+                let fade = 1 - Double(i) / Double(slices)
+                gc.fill(slice, with: .color(Palette.amber.opacity(0.2 * fade * fade)))
+            }
+            var beam = Path()
+            beam.move(to: center)
+            beam.addLine(to: CGPoint(x: center.x + cos(heading) * radius, y: center.y + sin(heading) * radius))
+            gc.stroke(beam, with: .color(Palette.amber.opacity(0.7)), lineWidth: 1)
+
+            gc.fill(Path(ellipseIn: CGRect(x: center.x - 2.5, y: center.y - 2.5, width: 5, height: 5)), with: .color(Palette.amber))
+        }
     }
 }
