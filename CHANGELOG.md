@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+- The Mine tab shows your recently merged pull requests under the Mine count. Merged items have no count.
+- Animations and rendering use less CPU.
+- While the panel is hidden, Beacon drops its views to use less memory.
+
 ## 1.1.0
 
 - The Unread tab groups each day's items by pull request. A group header folds. On hover, it opens the pull request or marks all of its items read.
