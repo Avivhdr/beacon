@@ -138,9 +138,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
     #endif
 
+    private struct IconCounts: Equatable {
+        var notifications: Int
+        var reviews: Int
+        var reviewsDimmed: Bool
+    }
+
+    private var iconCounts: IconCounts?
+
+    /// The model changes several times in each sync. Most of those changes leave the counts as they are.
     private func updateIcon() {
         let badge = model.reviewBadge
-        statusItem.button?.image = StatusIcon.render(notifications: model.unreadCount, reviews: badge.count, reviewsDimmed: badge.dim)
+        let counts = IconCounts(notifications: model.unreadCount, reviews: badge.count, reviewsDimmed: badge.dim)
+        guard counts != iconCounts else { return }
+        iconCounts = counts
+        statusItem.button?.image = StatusIcon.render(notifications: counts.notifications, reviews: counts.reviews, reviewsDimmed: counts.reviewsDimmed)
     }
 
     private func openFilters() {
@@ -222,6 +234,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if immediate {
             panel.alphaValue = 0
             panel.orderOut(nil)
+            model.panelDidClose()
             return
         }
         NSAnimationContext.runAnimationGroup({ context in
@@ -231,8 +244,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }, completionHandler: { [weak self] in
             MainActor.assumeIsolated {
                 // Skip if the panel was reopened while fading out.
-                guard let panel = self?.panel, panel.alphaValue == 0 else { return }
-                panel.orderOut(nil)
+                guard let self, self.panel.alphaValue == 0 else { return }
+                self.panel.orderOut(nil)
+                self.model.panelDidClose()
             }
         })
     }

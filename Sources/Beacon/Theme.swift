@@ -106,6 +106,46 @@ extension Animation {
     }
 }
 
+private struct PanelVisibleKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    /// False while the panel is ordered out. A hidden panel still renders, so looping motion checks this.
+    var panelVisible: Bool {
+        get { self[PanelVisibleKey.self] }
+        set { self[PanelVisibleKey.self] = newValue }
+    }
+}
+
+/// Looping motion driven by the clock. `cycle` goes from 0 up to 1 once per `period`, and is nil while
+/// the loop is stopped: not active, panel hidden, or Reduce Motion on.
+///
+/// Don't use `repeatForever` for this. A repeating animation never finishes, so after the first sync the
+/// panel redrew without pause, hidden or not, and used a full core. Each later animation on the same value
+/// was kept and replayed next to it, so every frame also got slower over the days.
+struct Looping<Content: View>: View {
+    var active = true
+    let period: Double
+    var framesPerSecond: Double = 30
+    @ViewBuilder let content: (_ cycle: Double?) -> Content
+    @Environment(\.panelVisible) private var panelVisible
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let running = active && panelVisible && !reduceMotion
+        TimelineView(.animation(minimumInterval: 1 / framesPerSecond, paused: !running)) { context in
+            content(running ? context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period : nil)
+        }
+    }
+}
+
+/// 0 at rest and at each end of a loop, 1 halfway, eased at the turns. A stopped loop rests at 0.
+func pulseLevel(_ cycle: Double?) -> Double {
+    guard let cycle else { return 0 }
+    return (1 - cos(cycle * 2 * .pi)) / 2
+}
+
 /// Fades and lifts a row in when the panel opens, one after another.
 struct StaggeredReveal: ViewModifier {
     let index: Int
