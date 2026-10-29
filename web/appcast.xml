@@ -3,21 +3,21 @@
     <channel>
         <title>Beacon</title>
         <item>
-            <title>1.1.0</title>
-            <pubDate>Thu, 22 Oct 2026 10:58:59 +0200</pubDate>
+            <title>1.2.0</title>
+            <pubDate>Thu, 29 Oct 2026 14:50:42 +0100</pubDate>
             <link>https://beacon-for-github.vercel.app</link>
-            <sparkle:version>3</sparkle:version>
-            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <description><![CDATA[<p>
 
-- The Unread tab groups each day's items by pull request. A group header folds. On hover, it opens the pull request or marks all of its items read.
-- Each row shows a link button on hover and has "Copy Link" in its right-click menu. Unread items copy the link to the comment or review. Group headers copy the link to the pull request.
-- Each group header in the Mine tab has a control that folds all of its repositories. When all are folded, it unfolds them.
+- The Mine tab shows your recently merged pull requests under the Mine count. Merged items have no count.
+- Animations and rendering use less CPU.
+- While the panel is hidden, Beacon drops its views to use less memory.
 
 </p>
 ]]></description>
-            <enclosure url="https://github.com/Avivhdr/beacon/releases/download/v1.1.0/Beacon-1.1.0.zip" length="2677552" type="application/octet-stream" sparkle:edSignature="mhRmstqhxcWW2Kz9aFQORMk614Nr02bsbu7LOy1vUKVTx3N7TK2oyOzy/LFE2H9QHKi3HY2cMhLRPL5eKbcEDw=="/>
+            <enclosure url="https://github.com/Avivhdr/beacon/releases/download/v1.2.0/Beacon-1.2.0.zip" length="2736953" type="application/octet-stream" sparkle:edSignature="4ImZSDiGb5JFwVkhszOt29oTJ6oOgP9FhFARI6cN8/J8E8qNAmyUtLg3pYZvyumIZmNcoLWzvwUA+2tO2FV3DA=="/>
         </item>
     </channel>
 </rss>

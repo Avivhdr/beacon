@@ -7,8 +7,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "1.1.0"
-    CURRENT_PROJECT_VERSION: "3"
+    MARKETING_VERSION: "1.2.0"
+    CURRENT_PROJECT_VERSION: "4"
 # Sparkle 2. Automatic checks, plus "Check for Updates…" in the panel menu.
 # The EdDSA public key is in Sources/Beacon/Info.plist. The private key is in
 # the login Keychain (account beacon), not in this repo.
