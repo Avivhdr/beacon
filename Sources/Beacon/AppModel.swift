@@ -48,7 +48,7 @@ final class AppModel: ObservableObject {
     @Published var showRead = false
     /// Bumped each time the panel opens, so its content rebuilds and plays its entrance.
     @Published private(set) var panelOpens = 0
-    /// False while the panel is ordered out, so its looping motion stops drawing.
+    /// False while the panel is ordered out. The panel drops its views then, so a sync doesn't redraw it.
     @Published private(set) var panelVisible = false
     /// Repos folded in the Mine tab. Remembered across launches.
     @Published private(set) var collapsedRepos = Set(UserDefaults.standard.stringArray(forKey: "collapsedRepos") ?? []) {
