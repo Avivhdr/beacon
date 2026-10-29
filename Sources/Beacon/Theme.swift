@@ -106,20 +106,8 @@ extension Animation {
     }
 }
 
-private struct PanelVisibleKey: EnvironmentKey {
-    static let defaultValue = true
-}
-
-extension EnvironmentValues {
-    /// False while the panel is ordered out. A hidden panel still renders, so looping motion checks this.
-    var panelVisible: Bool {
-        get { self[PanelVisibleKey.self] }
-        set { self[PanelVisibleKey.self] = newValue }
-    }
-}
-
 /// Looping motion driven by the clock. `cycle` goes from 0 up to 1 once per `period`, and is nil while
-/// the loop is stopped: not active, panel hidden, or Reduce Motion on.
+/// the loop is stopped: not active, or Reduce Motion on. The hidden panel holds no views, so nothing loops then.
 ///
 /// Don't use `repeatForever` for this. A repeating animation never finishes, so after the first sync the
 /// panel redrew without pause, hidden or not, and used a full core. Each later animation on the same value
@@ -129,11 +117,10 @@ struct Looping<Content: View>: View {
     let period: Double
     var framesPerSecond: Double = 30
     @ViewBuilder let content: (_ cycle: Double?) -> Content
-    @Environment(\.panelVisible) private var panelVisible
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let running = active && panelVisible && !reduceMotion
+        let running = active && !reduceMotion
         TimelineView(.animation(minimumInterval: 1 / framesPerSecond, paused: !running)) { context in
             content(running ? context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period : nil)
         }

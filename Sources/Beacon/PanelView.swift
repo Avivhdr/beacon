@@ -32,6 +32,15 @@ struct PanelView: View {
     static let size = CGSize(width: 460, height: 600)
 
     var body: some View {
+        // An ordered-out panel still lays out and draws every change, and each sync changes most of it.
+        // So the hidden panel holds nothing. Opening rebuilds the rows for their entrance anyway.
+        Group {
+            if model.panelVisible { panel } else { Color.clear }
+        }
+        .frame(width: Self.size.width, height: Self.size.height)
+    }
+
+    private var panel: some View {
         VStack(spacing: 0) {
             StatusStrip(model: model, updater: updater, openFilters: openFilters)
             if model.needsSignIn {
@@ -73,7 +82,6 @@ struct PanelView: View {
                 .strokeBorder(Palette.hairlineStrong, lineWidth: 1)
         )
         .environment(\.colorScheme, .dark)
-        .environment(\.panelVisible, model.panelVisible)
         .tint(Palette.amber)
     }
 
@@ -316,7 +324,6 @@ private struct StatusStrip: View {
     @ObservedObject var model: AppModel
     @ObservedObject var updater: Updater
     let openFilters: () -> Void
-    @Environment(\.panelVisible) private var panelVisible
 
     private var state: (color: Color, pulsing: Bool) {
         if model.isRefreshing { return (Palette.amber, true) }
@@ -328,8 +335,7 @@ private struct StatusStrip: View {
     var body: some View {
         HStack(spacing: 8) {
             StatusDot(color: state.color, pulsing: state.pulsing)
-            // Ticks only while the panel is open. Opening it ticks at once, so the age is fresh.
-            TimelineView(.animation(minimumInterval: 5, paused: !panelVisible)) { context in
+            TimelineView(.periodic(from: .now, by: 5)) { context in
                 Text(statusText(now: context.date))
                     .readout(size: 9, tracking: 1.3)
                     .foregroundStyle(model.needsSignIn ? Palette.amber : (model.errors.isEmpty ? Palette.faint : Palette.red))
