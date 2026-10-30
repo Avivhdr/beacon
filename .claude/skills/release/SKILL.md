@@ -27,17 +27,25 @@ Target version: read `$ARGUMENTS` against the current `MARKETING_VERSION` (`X.Y.
 
    Do not touch `CURRENT_PROJECT_VERSION`. `release.sh` owns that number and increments it. Sparkle compares the build number. Do not commit the marketing bump yourself. The script commits it with the build number.
 
-3. Run `./release.sh` from the repo root, with no flags, and show the output.
+3. Write the release notes. Users read them in the update window, and `release.sh` stops if `CHANGELOG.md` has no `## <version>` section.
+
+   - Read `git log v<previous>..HEAD` and write only what a user sees. Leave out internal work.
+   - Use an optional one-sentence lead, then a `- ` list with one change on each line. Keep each item to one or two short sentences. Use plain text, with no Markdown emphasis or links, and no blank lines between items.
+   - Commit `CHANGELOG.md` as `Add the <version> notes.`. Commit before you run the script, because the script stops if anything other than `project.yml` has changes.
+   - Check the result: `./scripts/notes-to-html.sh` turns the section into the HTML for the update window. The list must come out as `<ul>` with one `<li>` for each change.
+
+4. Run `./release.sh` from the repo root, with no flags, and show the output.
 
    The script builds the universal Release app, notarizes the app and the disk image, writes `Beacon-<version>.zip`, and signs `web/appcast.xml`. It creates GitHub release `v<version>` with the zip, `Beacon-<version>.dmg`, and the same disk image as `Beacon.dmg`. It commits `project.yml` and `web/appcast.xml` and pushes `main`. That push deploys the feed. It then checks the live feed, the update zip length, and `releases/latest/download/Beacon.dmg`. It updates the Homebrew cask and pushes the tap when that repo exists.
 
-4. Verify from outside this machine:
+5. Verify from outside this machine:
 
    - `curl -sS https://beacon-for-github.vercel.app/appcast.xml` shows the new `sparkle:shortVersionString` and a `sparkle:version` one higher than the previous release.
+   - The feed's `description` holds the notes as HTML, with a `<ul>` list and no raw `- ` lines.
    - The enclosure URL returns HTTP 200 and its byte count equals the `length` attribute in the feed.
    - `https://github.com/Avivhdr/beacon/releases/latest/download/Beacon.dmg` returns 200.
 
-5. Report the version, the build number, the feed status, both download checks, and the GitHub release URL.
+6. Report the version, the build number, the feed status, the notes format, both download checks, and the GitHub release URL.
 
 ## Stop and ask first if
 

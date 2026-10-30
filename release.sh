@@ -100,11 +100,7 @@ awk -v ver="$VERSION" '
   found { print }
 ' CHANGELOG.md > "$STAGE/notes.md"
 [ -s "$STAGE/notes.md" ] || { echo "!! CHANGELOG.md has no section for ${VERSION}"; exit 1; }
-{
-  echo "<p>"
-  sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' "$STAGE/notes.md"
-  echo "</p>"
-} > "$NOTES"
+./scripts/notes-to-html.sh < "$STAGE/notes.md" > "$NOTES"
 
 DOWNLOAD_PREFIX="https://github.com/${REPO}/releases/download/${TAG}/"
 echo "==> Signing the update and writing the appcast…"
