@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0
+
+Each of your pull requests now has one status in the Mine header.
+
+- Each pull request sits on one line: Ready, To fix, Failing CI or Waiting. The lines sum to the Mine count.
+- Click a line to show only those pull requests. Click it again to show all of them.
+- To fix now includes merge conflicts.
+- Each row has tags that show its state. The first tag gives the reason for its line.
+
 ## 1.2.0
 
 - The Mine tab shows your recently merged pull requests under the Mine count. Merged items have no count.
