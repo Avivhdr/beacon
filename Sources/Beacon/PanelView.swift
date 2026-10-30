@@ -6,6 +6,7 @@ struct PanelView: View {
     @ObservedObject var updater: Updater
     let openFilters: () -> Void
     @State private var tab = Tab.notifications
+    @State private var mineFilter: MineStatus?
     /// Which side the next tab slides in from: 1 when moving right, -1 when moving left.
     @State private var direction: CGFloat = 1
     @Namespace private var indicator
@@ -21,11 +22,12 @@ struct PanelView: View {
 
     #if DEBUG
     /// Snapshots open on a chosen tab. Release builds always open on Unread.
-    init(model: AppModel, updater: Updater, openFilters: @escaping () -> Void, initialTab: Tab) {
+    init(model: AppModel, updater: Updater, openFilters: @escaping () -> Void, initialTab: Tab, initialMineStatus: MineStatus? = nil) {
         self.model = model
         self.updater = updater
         self.openFilters = openFilters
         _tab = State(initialValue: initialTab)
+        _mineFilter = State(initialValue: initialMineStatus)
     }
     #endif
 
@@ -38,6 +40,8 @@ struct PanelView: View {
             if model.panelVisible { panel } else { Color.clear }
         }
         .frame(width: Self.size.width, height: Self.size.height)
+        // A filter left on from an earlier open would look like missing pull requests.
+        .onChange(of: model.panelOpens) { mineFilter = nil }
     }
 
     private var panel: some View {
@@ -59,7 +63,7 @@ struct PanelView: View {
                         ReviewsTab(model: model, openFilters: openFilters)
                             .transition(slide)
                     case .mine:
-                        MineTab(model: model)
+                        MineTab(model: model, filter: mineFilter)
                             .transition(slide)
                     case .merged:
                         MergedTab(model: model)
@@ -119,7 +123,7 @@ struct PanelView: View {
                     .padding(.bottom, 14)
                     .transition(.opacity)
             } else if tab == .mine {
-                MineTelemetry(model: model)
+                MineTelemetry(model: model, filter: $mineFilter)
                     .padding(.bottom, 14)
                     .transition(.opacity)
             } else if tab == .merged {
@@ -134,7 +138,10 @@ struct PanelView: View {
 
     private func select(_ value: Tab) {
         direction = value.rawValue > tab.rawValue ? 1 : -1
-        withAnimation(reduceMotion ? nil : .arrive(0.38)) { tab = value }
+        withAnimation(reduceMotion ? nil : .arrive(0.38)) {
+            tab = value
+            if value != .mine { mineFilter = nil }
+        }
     }
 
     private func readoutTab(_ value: Tab, label: String, count: Int, dim: Bool) -> some View {
@@ -229,18 +236,93 @@ private struct QueueTelemetry: View {
     }
 }
 
-/// Right side of the Mine header: what each of your PRs is waiting on.
+/// Right side of the Mine header: every PR on exactly one line. Click a line to filter the list.
 private struct MineTelemetry: View {
     @ObservedObject var model: AppModel
+    @Binding var filter: MineStatus?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let prs = model.mine.flatMap(\.prs).filter { !$0.isDraft }
-        let failing = prs.filter { $0.ciState == "FAILURE" || $0.ciState == "ERROR" }
-        VStack(alignment: .trailing, spacing: 6) {
-            TelemetryLine(label: "Ready", value: prs.filter { $0.reviewDecision == "APPROVED" && !failing.contains($0) }.count, color: Palette.green)
-            TelemetryLine(label: "Changes", value: prs.filter { $0.reviewDecision == "CHANGES_REQUESTED" }.count, color: Palette.red)
-            TelemetryLine(label: "Failing CI", value: failing.count, color: Palette.red)
+        let prs = model.mine.flatMap(\.prs)
+        VStack(alignment: .trailing, spacing: 5) {
+            line(.ready, prs)
+            line(.toFix, prs)
+            line(.failingCI, prs)
+            // Above the rule is what needs you. Below it is the rest, so the column still sums to the total.
+            Rectangle()
+                .fill(Palette.hairline)
+                .frame(height: 1)
+            line(.waiting, prs)
         }
+        // Without this the rule takes all the free width in the header.
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func line(_ status: MineStatus, _ prs: [ReviewPR]) -> some View {
+        MineStatusLine(status: status, value: prs.filter(status.matches).count, on: filter == status) {
+            withAnimation(reduceMotion ? nil : .arrive(0.34)) {
+                filter = filter == status ? nil : status
+            }
+        }
+    }
+}
+
+private struct MineStatusLine: View {
+    let status: MineStatus
+    let value: Int
+    let on: Bool
+    let toggle: () -> Void
+    @State private var hovering = false
+
+    private var help: String {
+        if on { return "Show all pull requests" }
+        switch status {
+        case .ready: return "Show only pull requests you can merge"
+        case .toFix: return "Show only pull requests with changes requested or merge conflicts"
+        case .failingCI: return "Show only pull requests with failing checks"
+        case .waiting: return "Show only drafts and pull requests waiting on checks or a review"
+        }
+    }
+
+    /// A zero has nothing to show. It stays clickable when on, so a sync that empties the filter can still clear it.
+    private var clickable: Bool { value > 0 || on }
+
+    private var color: Color {
+        switch status {
+        case .ready: return Palette.green
+        case .toFix, .failingCI: return Palette.red
+        case .waiting: return Palette.dim
+        }
+    }
+
+    var body: some View {
+        Button {
+            if clickable { toggle() }
+        } label: {
+            TelemetryLine(
+                label: status.rawValue,
+                value: value,
+                color: color,
+                labelColor: on || (hovering && clickable) ? Palette.amber : Palette.faint
+            )
+            // Outside the line's frame, so turning a filter on moves nothing.
+            .overlay(alignment: .leading) {
+                if on {
+                    Circle()
+                        .fill(Palette.amber)
+                        .frame(width: 5, height: 5)
+                        .offset(x: -11)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // Not .disabled: that would dim a zero below the faint the other labels use.
+        .allowsHitTesting(clickable)
+        .onHover { over in withAnimation(.arrive(0.2)) { hovering = over } }
+        .help(help)
+        .accessibilityLabel("\(value) \(status.rawValue)")
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -278,12 +360,13 @@ private struct TelemetryLine: View {
     let label: String
     let value: Int
     let color: Color
+    var labelColor = Palette.faint
 
     var body: some View {
         HStack(spacing: 10) {
             Text(label)
                 .readout(size: 8.5, tracking: 1.3)
-                .foregroundStyle(Palette.faint)
+                .foregroundStyle(labelColor)
             Text(verbatim: "\(value)")
                 .font(.system(size: 13, weight: .medium, design: .monospaced))
                 .foregroundStyle(value > 0 ? color : Palette.faint)
@@ -926,6 +1009,10 @@ private struct CILamp: View {
 
 private struct MineTab: View {
     @ObservedObject var model: AppModel
+    let filter: MineStatus?
+    /// Repos folded while a filter is on. A filter opens every repo, because a folded repo hides the
+    /// pull requests the filter asked for. These folds never touch the ones you keep without a filter.
+    @State private var filterFolds: Set<String> = []
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// PRs of one repo inside a layer, in the order GitHub returned them (most recently updated first).
@@ -945,6 +1032,36 @@ private struct MineTab: View {
         return order.map { RepoBucket(repo: $0, prs: byRepo[$0]!) }
     }
 
+    private var shownGroups: [CategoryResult] {
+        guard let filter else { return model.mine }
+        return model.mine.compactMap { group in
+            let prs = group.prs.filter(filter.matches)
+            return prs.isEmpty ? nil : CategoryResult(name: group.name, count: prs.count, prs: prs)
+        }
+    }
+
+    private func isCollapsed(_ repo: String) -> Bool {
+        filter == nil ? model.collapsedRepos.contains(repo) : filterFolds.contains(repo)
+    }
+
+    private func toggleCollapsed(_ repo: String) {
+        if filter == nil {
+            model.toggleCollapsed(repo)
+        } else if !filterFolds.insert(repo).inserted {
+            filterFolds.remove(repo)
+        }
+    }
+
+    private func setCollapsed(_ repos: [String], _ collapsed: Bool) {
+        if filter == nil {
+            model.setCollapsed(repos, collapsed)
+        } else if collapsed {
+            filterFolds.formUnion(repos)
+        } else {
+            filterFolds.subtract(repos)
+        }
+    }
+
     var body: some View {
         if model.mine.allSatisfy(\.prs.isEmpty) {
             if model.lastUpdated == nil {
@@ -955,8 +1072,16 @@ private struct MineTab: View {
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
+                    // Only a sync can empty a filter: a line with a zero count can't be turned on.
+                    if filter != nil && shownGroups.isEmpty {
+                        Text("None right now")
+                            .readout(size: 9, tracking: 1.3)
+                            .foregroundStyle(Palette.faint)
+                            .padding(.leading, 18)
+                            .padding(.vertical, 12)
+                    }
                     // Running position, so the entrance cascades through headers and rows in reading order.
-                    let groups = model.mine.map { (group: $0, buckets: buckets($0.prs)) }
+                    let groups = shownGroups.map { (group: $0, buckets: buckets($0.prs)) }
                     let starts = groups.indices.map { i in
                         groups[..<i].reduce(0) { $0 + 1 + $1.buckets.reduce(0) { $0 + 1 + $1.prs.count } }
                     }
@@ -973,9 +1098,9 @@ private struct MineTab: View {
                             let showOwner = Set(entry.group.prs.map { $0.repo.split(separator: "/").first ?? "" }).count > 1
                             ForEach(Array(entry.buckets.enumerated()), id: \.element.id) { bucketIndex, bucket in
                                 let first = starts[groupIndex] + 1 + entry.buckets[..<bucketIndex].reduce(0) { $0 + 1 + $1.prs.count }
-                                let collapsed = model.collapsedRepos.contains(bucket.repo)
+                                let collapsed = isCollapsed(bucket.repo)
                                 RepoHeader(repo: bucket.repo, prs: bucket.prs, showOwner: showOwner, collapsed: collapsed) {
-                                    withAnimation(reduceMotion ? nil : .arrive(0.34)) { model.toggleCollapsed(bucket.repo) }
+                                    withAnimation(reduceMotion ? nil : .arrive(0.34)) { toggleCollapsed(bucket.repo) }
                                 }
                                 .staggeredReveal(first)
                                 if !collapsed {
@@ -991,10 +1116,10 @@ private struct MineTab: View {
                                 if !entry.buckets.isEmpty {
                                     let repos = entry.buckets.map(\.repo)
                                     // Any open repo means the click folds; only a fully folded group unfolds.
-                                    let allCollapsed = repos.allSatisfy(model.collapsedRepos.contains)
+                                    let allCollapsed = repos.allSatisfy(isCollapsed)
                                     FoldAllButton(allCollapsed: allCollapsed) {
                                         withAnimation(reduceMotion ? nil : .arrive(0.34)) {
-                                            model.setCollapsed(repos, !allCollapsed)
+                                            setCollapsed(repos, !allCollapsed)
                                         }
                                     }
                                 }
@@ -1005,6 +1130,7 @@ private struct MineTab: View {
                 .padding(.bottom, 10)
             }
             .scrollIndicators(.never)
+            .onChange(of: filter) { filterFolds = [] }
         }
     }
 }
@@ -1100,13 +1226,17 @@ private struct MineRow: View {
     let open: () -> Void
     @State private var hovering = false
 
-    private var review: (label: String, color: Color)? {
-        switch pr.reviewDecision {
-        case "APPROVED": return ("Approved", Palette.green)
-        case "CHANGES_REQUESTED": return ("Changes requested", Palette.red)
-        case "REVIEW_REQUIRED": return ("Awaiting review", Palette.steel)
-        default: return nil
-        }
+    /// In the order `MineStatus` checks them, so the first tag says why the row is on its header line.
+    private var tags: [(text: String, color: Color)] {
+        var tags: [(text: String, color: Color)] = []
+        if pr.isDraft { tags.append(("Draft", Palette.dim)) }
+        if pr.ciFailing { tags.append(("Failing CI", Palette.red)) }
+        if pr.hasConflicts { tags.append(("Conflicts", Palette.red)) }
+        if pr.reviewDecision == "CHANGES_REQUESTED" { tags.append(("Changes requested", Palette.red)) }
+        if pr.ciRunning { tags.append(("CI running", Palette.steel)) }
+        if pr.reviewDecision == "REVIEW_REQUIRED" { tags.append(("Awaiting review", Palette.steel)) }
+        if pr.reviewDecision == "APPROVED" { tags.append(("Approved", Palette.green)) }
+        return tags
     }
 
     var body: some View {
@@ -1120,14 +1250,17 @@ private struct MineRow: View {
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 6) {
-                        if pr.isDraft { StatusTag(text: "Draft", color: Palette.dim) }
-                        if let review { StatusTag(text: review.label, color: review.color) }
+                        ForEach(tags, id: \.text) { tag in
+                            StatusTag(text: tag.text, color: tag.color)
+                        }
                         Text(verbatim: "#\(pr.number)")
                             .font(.system(size: 10.5, design: .monospaced))
                             .foregroundStyle(Palette.faint)
                             .lineLimit(1)
                     }
                 }
+                // Without this, a row with several tags and a running lamp wraps its title and loses its number.
+                .layoutPriority(1)
                 Spacer(minLength: 8)
                 Age(date: pr.createdAt, stale: false)
                     .padding(.top, 3)
