@@ -14,6 +14,7 @@ enum Snapshotter {
         capture(dir, "unread.png", tab: .notifications, model: populated(now: now))
         capture(dir, "to-review.png", tab: .reviews, model: populated(now: now))
         capture(dir, "mine.png", tab: .mine, model: populated(now: now))
+        capture(dir, "mine-failing.png", tab: .mine, model: populated(now: now), mineFilter: .failingCI)
         let merged = populated(now: now)
         merged.mergedByRepo = false
         capture(dir, "merged.png", tab: .merged, model: merged)
@@ -40,9 +41,9 @@ enum Snapshotter {
         capture(dir, "signin-rejected.png", tab: .notifications, model: rejected)
     }
 
-    private static func capture(_ dir: URL, _ name: String, tab: PanelView.Tab, model: AppModel) {
+    private static func capture(_ dir: URL, _ name: String, tab: PanelView.Tab, model: AppModel, mineFilter: MineStatus? = nil) {
         let size = PanelView.size
-        let host = NSHostingView(rootView: PanelView(model: model, updater: Updater(), openFilters: {}, initialTab: tab))
+        let host = NSHostingView(rootView: PanelView(model: model, updater: Updater(), openFilters: {}, initialTab: tab, initialMineStatus: mineFilter))
         host.frame = NSRect(origin: .zero, size: size)
 
         let window = NSWindow(
@@ -174,7 +175,7 @@ enum Snapshotter {
             pr("w3", repo: "octo-org/docs", number: 48, title: "Write the privacy section", author: "octocat", ci: "SUCCESS", at: now.addingTimeInterval(-8 * 3_600), draft: true),
         ]
         let minePersonal = [
-            pr("p1", repo: "octocat/hello-world", number: 3, title: "Try the snapshot tool on a clean tree", author: "octocat", ci: "EXPECTED", at: now.addingTimeInterval(-90 * 60), decision: "REVIEW_REQUIRED"),
+            pr("p1", repo: "octocat/hello-world", number: 3, title: "Try the snapshot tool on a clean tree", author: "octocat", ci: "EXPECTED", at: now.addingTimeInterval(-90 * 60), decision: "REVIEW_REQUIRED", mergeable: "CONFLICTING"),
         ]
         let merged = [
             pr("g1", repo: "octo-org/frontend", number: 180, title: "Slide the tab mark between sections", author: "octocat", ci: nil, at: now.addingTimeInterval(-5 * 3_600), mergedAt: now.addingTimeInterval(-5 * 3_600)),
@@ -237,6 +238,7 @@ enum Snapshotter {
         skip: Bool = false,
         draft: Bool = false,
         decision: String? = nil,
+        mergeable: String? = nil,
         mergedAt: Date? = nil
     ) -> ReviewPR {
         ReviewPR(
@@ -251,6 +253,7 @@ enum Snapshotter {
             skipLabels: skip ? [PRLabel(name: "DO NOT REVIEW", color: "F4A93B")] : [],
             isDraft: draft,
             reviewDecision: decision,
+            mergeable: mergeable,
             mergedAt: mergedAt
         )
     }

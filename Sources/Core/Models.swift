@@ -199,6 +199,8 @@ public struct ReviewPR: Identifiable, Hashable {
     public var isDraft = false
     /// APPROVED, CHANGES_REQUESTED, REVIEW_REQUIRED, or nil when the repo doesn't require reviews.
     public var reviewDecision: String?
+    /// MERGEABLE, CONFLICTING, or UNKNOWN while GitHub is still working it out.
+    public var mergeable: String?
     /// Set for a merged pull request. Nil on an open one.
     public var mergedAt: Date?
 
@@ -215,6 +217,7 @@ public struct ReviewPR: Identifiable, Hashable {
         skipLabels: [PRLabel] = [],
         isDraft: Bool = false,
         reviewDecision: String? = nil,
+        mergeable: String? = nil,
         mergedAt: Date? = nil
     ) {
         self.id = id
@@ -229,10 +232,17 @@ public struct ReviewPR: Identifiable, Hashable {
         self.skipLabels = skipLabels
         self.isDraft = isDraft
         self.reviewDecision = reviewDecision
+        self.mergeable = mergeable
         self.mergedAt = mergedAt
     }
 
     public var isSkipped: Bool { !skipLabels.isEmpty }
+
+    public var hasConflicts: Bool { mergeable == "CONFLICTING" }
+
+    public var ciFailing: Bool { ciState == "FAILURE" || ciState == "ERROR" }
+
+    public var ciRunning: Bool { ciState == "PENDING" || ciState == "EXPECTED" }
 
     public var repoName: String { repo.split(separator: "/").last.map(String.init) ?? repo }
 }

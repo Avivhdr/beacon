@@ -226,7 +226,7 @@ public final class GitHubClient {
         issueCount
         nodes {
           ... on PullRequest {
-            id number title url createdAt mergedAt isDraft reviewDecision
+            id number title url createdAt mergedAt isDraft reviewDecision mergeable
             author { login }
             repository { nameWithOwner }
             labels(first: 20) { nodes { name color } }
@@ -254,6 +254,7 @@ public final class GitHubClient {
             var mergedAt: Date?
             var isDraft: Bool?
             var reviewDecision: String?
+            var mergeable: String?
             var author: Login?
             var repository: Repo?
             var labels: Nodes<Label>?
@@ -277,6 +278,7 @@ public final class GitHubClient {
                 labels: node.labels?.nodes.compactMap { $0.map { PRLabel(name: $0.name, color: $0.color) } } ?? [],
                 isDraft: node.isDraft ?? false,
                 reviewDecision: node.reviewDecision,
+                mergeable: node.mergeable,
                 mergedAt: node.mergedAt
             )
         }
